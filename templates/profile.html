@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>My profile</h1>
+  <form method="post">
+    <label for="full_name">Full name</label>
+    <input id="full_name" name="full_name" value="{{ user['full_name'] }}" required>
+    <label>Email</label>
+    <input value="{{ user['email'] }}" disabled>
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" value="{{ user['phone'] or '' }}">
+    <label for="institution">Nearest university</label>
+    <select id="institution" name="institution">
+      <option value="">Select</option>
+      {% for u in universities %}<option value="{{ u }}" {{ 'selected' if u == user['institution'] }}>{{ u }}</option>{% endfor %}
+    </select>
+    <label for="gender">Title</label>
+    <select id="gender" name="gender">
+      <option value="male" {{ 'selected' if user['gender'] == 'male' }}>Mr</option>
+      <option value="female" {{ 'selected' if user['gender'] == 'female' }}>Mrs</option>
+    </select>
+    <div class="actions"><button class="btn" type="submit">Save profile</button></div>
+  </form>
+</div>
+{% endblock %}

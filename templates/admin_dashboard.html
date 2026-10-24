@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "_macros.html" import thumbs, upload_form with context %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1>Administrator dashboard</h1>
+  <a class="btn" href="{{ url_for('new_hostel') }}">+ Add Accommodation</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{{ stats['users'] }}</b><span>Users</span></div>
+  <div class="stat"><b>{{ stats['students'] }}</b><span>Students</span></div>
+  <div class="stat"><b>{{ stats['managers'] }}</b><span>Landlords</span></div>
+  <div class="stat"><b>{{ stats['listings'] }}</b><span>Listings</span></div>
+  <div class="stat"><b>{{ stats['verified'] }}</b><span>Verified</span></div>
+  <div class="stat"><b>{{ stats['reports'] }}</b><span>Open reports</span></div>
+  <div class="stat"><b>GH₵{{ '{:,.0f}'.format(stats['revenue']) }}</b><span>Paid volume</span></div>
+</div>
+
+<h2>Pending approval</h2>
+<div class="card table-wrap">
+  {% if pending %}
+  <table>
+    <tr><th>Hostel</th><th>Landlord</th><th></th></tr>
+    {% for h in pending %}
+    <tr>
+      <td><a href="{{ url_for('edit_hostel', hostel_id=h['id']) }}">{{ h['name'] }}</a><br><span class="muted">{{ h['city'] }}, {{ h['region'] }}</span></td>
+      <td>{{ h['manager_name'] }}<br><span class="muted">{{ h['manager_email'] }}</span></td>
+      <td>
+        <form class="inline" method="post" action="{{ url_for('verify_hostel', hostel_id=h['id']) }}"><button class="btn sm" type="submit">Approve</button></form>
+        <form class="inline" method="post" action="{{ url_for('reject_hostel', hostel_id=h['id']) }}"><button class="btn danger sm" type="submit">Reject</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}Nothing waiting for approval.{% endif %}
+</div>
+
+<h2>Open reports</h2>
+<div class="card table-wrap">
+  {% if reports %}
+  <table>
+    <tr><th>Hostel</th><th>Reason</th><th>Reporter</th><th></th></tr>
+    {% for r in reports %}
+    <tr>
+      <td><a href="{{ url_for('hostel_detail', hostel_id=r['hostel_id']) }}">{{ r['hostel_name'] }}</a></td>
+      <td>{{ r['reason'] }}</td>
+      <td>{{ r['reporter_name'] or 'Anonymous' }}</td>
+      <td><form class="inline" method="post" action="{{ url_for('close_report', report_id=r['id']) }}"><button class="btn ghost sm" type="submit">Close</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}No open reports.{% endif %}
+</div>
+
+{% if stale_hostels %}
+<h2>Listings not updated in 30+ days</h2>
+<div class="card">
+  {% for h in stale_hostels %}<span class="badge warn" style="margin:2px">{{ h['name'] }}</span>{% endfor %}
+</div>
+{% endif %}
+
+<h2>Landlords</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th></th></tr>
+  {% for u in landlords %}
+  <tr>
+    <td>{{ u['full_name'] }}</td><td>{{ u['email'] }}</td><td>{{ u['phone'] or '' }}</td>
+    <td><span class="badge {{ 'bad' if u['approval_status'] == 'suspended' else 'ok' }}">{{ u['approval_status']|upper }}</span></td>
+    <td>
+      {% if u['approval_status'] == 'suspended' %}
+      <form class="inline" method="post" action="{{ url_for('update_landlord_status', user_id=u['id'], action='restore') }}"><button class="btn sm" type="submit">Restore</button></form>
+      {% else %}
+      <form class="inline" method="post" action="{{ url_for('update_landlord_status', user_id=u['id'], action='suspend') }}"><button class="btn danger sm" type="submit">Suspend</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+
+<h2>All listings</h2>
+{% for h in hostels %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <strong><a href="{{ url_for('hostel_detail', hostel_id=h['id']) }}">{{ h['name'] }}</a></strong>
+      <span class="badge {{ 'ok' if h['approval_status'] == 'approved' else 'warn' }}">{{ h['approval_status']|upper }}</span>
+      <div class="muted">{{ h['city'] }}, {{ h['region'] }} &middot; by {{ h['manager_name'] }}</div>
+    </div>
+    <div class="actions" style="margin-top:0">
+      <a class="btn ghost sm" href="{{ url_for('edit_hostel', hostel_id=h['id']) }}">Edit</a>
+      {% if h['verified'] %}
+      <form class="inline" method="post" action="{{ url_for('hide_hostel', hostel_id=h['id']) }}"><button class="btn ghost sm" type="submit">Hide</button></form>
+      {% else %}
+      <form class="inline" method="post" action="{{ url_for('restore_hostel', hostel_id=h['id']) }}"><button class="btn sm" type="submit">Restore</button></form>
+      {% endif %}
+      <form class="inline" method="post" action="{{ url_for('remove_hostel', hostel_id=h['id']) }}" onsubmit="return confirm('Permanently remove this listing?')"><button class="btn danger sm" type="submit">Remove</button></form>
+    </div>
+  </div>
+  <details style="margin-top:8px"><summary>Hostel pictures</summary>
+    {{ thumbs(photos_by_hostel.get(h['id'], [])) }}
+    {{ upload_form(url_for('upload_hostel_photos', hostel_id=h['id']), 'Drop your pictures here', 'Upload hostel pictures') }}
+  </details>
+</div>
+{% endfor %}
+
+<h2>My pictures</h2>
+<div class="card">
+  {{ upload_form(url_for('upload_my_photos'), 'Drop your pictures here', 'Upload pictures') }}
+  {{ thumbs(photos) }}
+</div>
+
+<h2>All users</h2>
+<div class="card table-wrap"><table>
+  <tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr>
+  {% for u in users %}
+  <tr><td>{{ u['full_name'] }}</td><td>{{ u['email'] }}</td><td>{{ u['role'] }}</td><td>{{ (u['created_at'] or '')[:10] }}</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

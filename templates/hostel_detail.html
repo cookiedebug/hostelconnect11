@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ hostel['name'] }}{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <div class="gallery">
+    <img src="{{ media_url(hostel['image_url']) }}" alt="{{ hostel['name'] }}">
+    {% if photos %}
+    <div class="thumbs">
+      {% for p in photos %}<div class="thumb"><img src="{{ media_url(p['path']) }}" alt="photo"></div>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    <h1>{{ hostel['name'] }}</h1>
+    <p class="muted">{{ hostel['address'] or hostel['city'] }}{% if hostel['area'] %} &middot; {{ hostel['area'] }}{% endif %}, {{ hostel['city'] }} &middot; {{ hostel['region'] }}</p>
+    {% if hostel['university'] %}<p>Near <strong>{{ hostel['university'] }}</strong></p>{% endif %}
+    {% if hostel['verified'] %}<span class="badge ok">Verified</span>{% endif %}
+    {% if hostel['is_directory'] %}<span class="badge">Directory listing</span>{% endif %}
+    <span class="muted">Updated {{ relative_time(hostel['updated_at'] or hostel['created_at']) }}</span>
+    {% if is_stale(hostel['updated_at'] or hostel['created_at']) %}<span class="badge warn">May be out of date</span>{% endif %}
+    <p>{{ hostel['description'] }}</p>
+    {% if hostel['facilities'] %}
+    <p><strong>Facilities:</strong> {{ hostel['facilities'] }}</p>
+    {% endif %}
+    {% if hostel['rules'] %}<p><strong>House rules:</strong> {{ hostel['rules'] }}</p>{% endif %}
+    {% if hostel['price_note'] %}<p class="muted">{{ hostel['price_note'] }}</p>{% endif %}
+    {% if hostel['source_url'] %}<p><a href="{{ hostel['source_url'] }}" target="_blank" rel="noopener">Source of published prices</a></p>{% endif %}
+    <p class="muted">Listed by {{ hostel['manager_name'] }}</p>
+
+    <div class="actions">
+      {% if hostel['contact_phone'] %}
+        <a class="btn" href="tel:{{ hostel['contact_phone'] }}" data-track="{{ url_for('track_hostel_event', hostel_id=hostel['id'], event='call') }}">Call</a>
+        <a class="btn alt" href="{{ whatsapp_url(hostel['contact_phone']) }}" target="_blank" rel="noopener" data-track="{{ url_for('track_hostel_event', hostel_id=hostel['id'], event='whatsapp') }}">WhatsApp</a>
+      {% endif %}
+      {% if current_user and current_user['role'] == 'student' %}
+        <form class="inline" method="post" action="{{ url_for('favorite', hostel_id=hostel['id']) }}">
+          <button class="btn ghost" type="submit">Save / unsave</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<h2 style="margin-top:24px">Rooms and prices</h2>
+{% if rooms %}
+<div class="card table-wrap"><table>
+  <tr><th>Room</th><th>Price</th><th>Availability</th><th></th></tr>
+  {% for r in rooms %}
+  <tr>
+    <td>
+      <strong>{{ r['room_type'] }}</strong>{% if r['room_label'] %} &middot; {{ r['room_label'] }}{% endif %}
+      {% if r['description'] %}<div class="muted">{{ r['description'] }}</div>{% endif %}
+      {% for p in room_photos.get(r['id'], []) %}<img src="{{ media_url(p['path']) }}" alt="room" style="width:80px;height:60px;object-fit:cover;border-radius:6px;margin-top:6px">{% endfor %}
+    </td>
+    <td class="price">GH₵{{ '{:,.0f}'.format(r['price']) }} <span class="muted">{{ r['price_period'] }}</span></td>
+    <td>
+      {% if r['total_rooms'] == 0 %}<span class="muted">Confirm with provider</span>
+      {% else %}
+        {% set status = availability_status(r['available_rooms']) %}
+        <span class="badge {{ 'ok' if status == 'Available' else ('warn' if status == 'Limited Availability' else 'bad') }}">{{ status }}</span>
+        <div class="muted">{{ r['available_rooms'] }} of {{ r['total_rooms'] }} free</div>
+      {% endif %}
+    </td>
+    <td>
+      {% if r['available_rooms'] > 0 %}<a class="btn sm" href="{{ url_for('book', room_id=r['id']) }}">Book</a>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="card">No rooms have been listed yet.</div>
+{% endif %}
+
+<div class="card">
+  <h3>Report outdated or wrong information</h3>
+  <form method="post" action="{{ url_for('report', hostel_id=hostel['id']) }}">
+    <textarea name="reason" placeholder="What is wrong with this listing?" required></textarea>
+    <div class="actions"><button class="btn ghost" type="submit">Send report</button></div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest("[data-track]");
+    if (link && navigator.sendBeacon) navigator.sendBeacon(link.dataset.track);
+  });
+</script>
+{% endblock %}

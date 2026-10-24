@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit accommodation' if hostel else 'Add accommodation' }}{% endblock %}
+{% block content %}
+<div class="card form-wide">
+  <h1>{{ 'Edit accommodation' if hostel else 'Add accommodation' }}
+    {% if current_user['role'] == 'admin' %}<span class="badge">ADMINISTRATOR</span>{% endif %}</h1>
+  <form method="post" enctype="multipart/form-data">
+    <label for="name">Hostel name</label>
+    <input id="name" name="name" value="{{ hostel['name'] if hostel else '' }}" required>
+
+    <div class="form-row">
+      <div>
+        <label for="university">University</label>
+        <select id="university" name="university">
+          <option value="">Select</option>
+          {% for u in universities %}<option value="{{ u }}" {{ 'selected' if hostel and u == hostel['university'] }}>{{ u }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="region">Region</label>
+        <select id="region" name="region">
+          {% for r in regions %}<option value="{{ r }}" {{ 'selected' if hostel and r == hostel['region'] }}>{{ r }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label for="city">City / town</label><input id="city" name="city" value="{{ hostel['city'] if hostel else '' }}"></div>
+      <div><label for="area">Area</label><input id="area" name="area" value="{{ (hostel['area'] or '') if hostel else '' }}"></div>
+    </div>
+
+    <label for="address">Address / directions</label>
+    <input id="address" name="address" value="{{ (hostel['address'] or '') if hostel else '' }}">
+    <label for="description">Description</label>
+    <textarea id="description" name="description">{{ (hostel['description'] or '') if hostel else '' }}</textarea>
+    <label for="facilities">Facilities (comma separated)</label>
+    <input id="facilities" name="facilities" value="{{ (hostel['facilities'] or '') if hostel else '' }}" placeholder="Wi-Fi, Security, Water">
+    <label for="rules">House rules</label>
+    <textarea id="rules" name="rules">{{ (hostel['rules'] or '') if hostel else '' }}</textarea>
+
+    <div class="form-row">
+      <div><label for="contact_phone">Contact phone</label><input id="contact_phone" name="contact_phone" value="{{ (hostel['contact_phone'] or '') if hostel else '' }}"></div>
+      <div><label for="contact_email">Contact email</label><input id="contact_email" name="contact_email" type="email" value="{{ (hostel['contact_email'] or '') if hostel else '' }}"></div>
+    </div>
+
+    {% if not hostel %}
+    <h3 style="margin-top:18px">First room type</h3>
+    <div class="form-row">
+      <div><label for="room_type">Room type</label>
+        <select id="room_type" name="room_type"><option>Single</option><option>Double</option><option>Shared</option></select></div>
+      <div><label for="price">Price (GH₵)</label><input id="price" name="price" inputmode="decimal"></div>
+      <div><label for="price_period">Period</label><input id="price_period" name="price_period" value="month"></div>
+      <div><label for="total_rooms">Total rooms</label><input id="total_rooms" name="total_rooms" type="number" min="0" value="1"></div>
+      <div><label for="available_rooms">Available</label><input id="available_rooms" name="available_rooms" type="number" min="0" value="1"></div>
+    </div>
+    <label for="room_description">Room description</label>
+    <input id="room_description" name="room_description">
+    {% endif %}
+
+    <label for="photos">Pictures</label>
+    <div class="dropzone"><input id="photos" type="file" name="photos" accept=".jpg,.jpeg,.png,.gif,.webp" multiple></div>
+
+    <div class="actions">
+      <button class="btn" type="submit">{{ 'Save changes' if hostel else 'Publish accommodation' }}</button>
+      <a class="btn ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

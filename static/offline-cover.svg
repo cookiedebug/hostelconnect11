@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="HostelConnect">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#0ea5a4"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" opacity=".9">
+    <path d="M250 290 L400 170 L550 290"/>
+    <path d="M280 270 V350 H520 V270"/>
+    <path d="M370 350 V290 H430 V350"/>
+  </g>
+  <text x="400" y="420" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#ffffff">HostelConnect</text>
+</svg>

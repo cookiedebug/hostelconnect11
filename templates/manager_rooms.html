@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}My rooms{% endblock %}
+{% block content %}
+<h1>All my rooms</h1>
+<div class="card table-wrap">
+  {% if rooms %}
+  <table>
+    <tr><th>Hostel</th><th>Room</th><th>Price</th><th>Total</th><th>Available</th><th>Occupied</th><th>Updated</th></tr>
+    {% for r in rooms %}
+    <tr>
+      <td>{{ r['hostel_name'] }}</td>
+      <td>{{ r['room_type'] }}{% if r['room_label'] %} &middot; {{ r['room_label'] }}{% endif %}</td>
+      <td>GH₵{{ '{:,.0f}'.format(r['price']) }} <span class="muted">{{ r['price_period'] }}</span></td>
+      <td>{{ r['total_rooms'] }}</td><td>{{ r['available_rooms'] }}</td><td>{{ r['occupied_rooms'] }}</td>
+      <td>{{ relative_time(r['updated_at']) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}No rooms yet.{% endif %}
+</div>
+<a class="btn ghost" href="{{ url_for('manager_dashboard') }}">Back to dashboard</a>
+{% endblock %}

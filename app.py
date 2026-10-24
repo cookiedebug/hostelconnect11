@@ -686,11 +686,18 @@ def user_display_name(user):
     return user["full_name"]
 
 
+def _parse_utc(value):
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def relative_time(value):
     if not value:
         return "Recently"
     try:
-        elapsed = datetime.now(timezone.utc).replace(tzinfo=None) - datetime.fromisoformat(value)
+        elapsed = datetime.now(timezone.utc) - _parse_utc(value)
     except (TypeError, ValueError):
         return "Recently"
     minutes = max(int(elapsed.total_seconds() // 60), 0)
@@ -706,7 +713,7 @@ def is_stale(value, days=30):
     if not value:
         return True
     try:
-        return datetime.now(timezone.utc).replace(tzinfo=None) - datetime.fromisoformat(value) > timedelta(days=days)
+        return datetime.now(timezone.utc) - _parse_utc(value) > timedelta(days=days)
     except (TypeError, ValueError):
         return True
 

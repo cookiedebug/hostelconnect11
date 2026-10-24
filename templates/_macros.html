@@ -1,0 +1,56 @@
+{% macro hostel_card(h) %}
+<div class="hostel-card">
+  <a href="{{ url_for('hostel_detail', hostel_id=h['id']) }}"><img src="{{ media_url(h['image_url']) }}" alt="{{ h['name'] }}" loading="lazy"></a>
+  <div class="body">
+    <h3><a href="{{ url_for('hostel_detail', hostel_id=h['id']) }}">{{ h['name'] }}</a></h3>
+    <div class="muted">{{ h['city'] }}{% if h['area'] %}, {{ h['area'] }}{% endif %} &middot; {{ h['region'] }}</div>
+    {% if h['university'] %}<div class="muted">Near {{ h['university'] }}</div>{% endif %}
+    {% if h['min_price'] is not none %}
+      <div class="price">From GH₵{{ '{:,.0f}'.format(h['min_price']) }} <span class="muted">{{ h['price_period'] or '' }}</span></div>
+    {% else %}
+      <div class="muted">Price on request</div>
+    {% endif %}
+    <div>
+      {% if h['is_directory'] %}
+        <span class="badge">Directory listing</span>
+      {% else %}
+        {% set status = availability_status(h['available_rooms']) %}
+        <span class="badge {{ 'ok' if status == 'Available' else ('warn' if status == 'Limited Availability' else 'bad') }}">{{ status }}</span>
+      {% endif %}
+      {% if h['verified'] %}<span class="badge ok">Verified</span>{% endif %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro status_badge(status) %}
+  {% if status == 'approved' %}<span class="badge ok">APPROVED</span>
+  {% elif status == 'rejected' or status == 'cancelled' %}<span class="badge bad">{{ status|upper }}</span>
+  {% elif status == 'paid' %}<span class="badge ok">PAID</span>
+  {% else %}<span class="badge warn">{{ status|upper }}</span>{% endif %}
+{% endmacro %}
+
+{% macro thumbs(photos) %}
+  {% if photos %}
+  <div class="thumbs">
+    {% for p in photos %}
+    <div class="thumb">
+      <img src="{{ media_url(p['path']) }}" alt="photo">
+      <form method="post" action="{{ url_for('delete_photo', photo_id=p['id']) }}" onsubmit="return confirm('Remove this photo?')">
+        <button class="btn danger sm" type="submit">Remove</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro upload_form(action, label, button) %}
+<form method="post" action="{{ action }}" enctype="multipart/form-data">
+  <div class="dropzone">
+    <strong>{{ label }}</strong><br>
+    <input type="file" name="photos" accept=".jpg,.jpeg,.png,.gif,.webp" multiple>
+  </div>
+  <div class="actions"><button class="btn sm" type="submit">{{ button }}</button></div>
+</form>
+{% endmacro %}

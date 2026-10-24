@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<h1>Rental price and availability analytics</h1>
+
+<div class="card table-wrap">
+  <h3>By region</h3>
+  <table>
+    <tr><th>Region</th><th>Average price</th><th>Total rooms</th><th>Available</th></tr>
+    {% for r in region_data %}
+    <tr><td>{{ r['region'] }}</td><td>GH₵{{ r['avg_price'] }}</td><td>{{ r['total_rooms'] or 0 }}</td><td>{{ r['available_rooms'] or 0 }}</td></tr>
+    {% else %}<tr><td colspan="4">No data yet.</td></tr>{% endfor %}
+  </table>
+</div>
+
+<div class="card table-wrap">
+  <h3>By room type</h3>
+  <table>
+    <tr><th>Room type</th><th>Average price</th><th>Total rooms</th><th>Available</th></tr>
+    {% for r in room_data %}
+    <tr><td>{{ r['room_type'] }}</td><td>GH₵{{ r['avg_price'] }}</td><td>{{ r['total_rooms'] or 0 }}</td><td>{{ r['available_rooms'] or 0 }}</td></tr>
+    {% else %}<tr><td colspan="4">No data yet.</td></tr>{% endfor %}
+  </table>
+</div>
+{% endblock %}
