@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hostel_card with context %}
+{% block title %}Find student accommodation{% endblock %}
+{% block content %}
+<div class="hero">
+  <h1>Find your hostel near campus</h1>
+  <p>Browse verified student accommodation across Ghana, compare prices and book a room.</p>
+</div>
+
+<form class="card" method="get" action="{{ url_for('index') }}">
+  <div class="form-row">
+    <div><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Hostel, city or campus"></div>
+    <div>
+      <label for="region">Region</label>
+      <select id="region" name="region">
+        <option value="">All regions</option>
+        {% for r in regions %}<option value="{{ r }}" {{ 'selected' if r == selected_region }}>{{ r }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="university">University</label>
+      <select id="university" name="university">
+        <option value="">All universities</option>
+        {% for u in universities %}<option value="{{ u }}" {{ 'selected' if u == selected_university }}>{{ u }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="room_type">Room type</label>
+      <select id="room_type" name="room_type">
+        <option value="">Any</option>
+        {% for t in ['Single', 'Double', 'Shared'] %}<option value="{{ t }}" {{ 'selected' if t == room_type }}>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label for="min_price">Min price (GH₵)</label><input id="min_price" name="min_price" value="{{ min_price }}" inputmode="decimal"></div>
+    <div><label for="max_price">Max price (GH₵)</label><input id="max_price" name="max_price" value="{{ max_price }}" inputmode="decimal"></div>
+  </div>
+  <label><input type="checkbox" name="available_only" value="1" {{ 'checked' if available_only == '1' }}> Only show hostels with available rooms</label>
+  <div class="actions">
+    <button class="btn" type="submit">Search</button>
+    <a class="btn ghost" href="{{ url_for('index') }}">Reset</a>
+  </div>
+</form>
+
+{% if selected_uni %}
+<div class="card"><strong>{{ selected_uni['name'] }}</strong> &mdash; {{ selected_uni['city'] }}, {{ selected_uni['region'] }}</div>
+{% endif %}
+
+{% if price_comparison %}
+<div class="stats">
+  <div class="stat"><b>{{ price_comparison.count }}</b><span>Hostels in {{ price_comparison.area }}</span></div>
+  <div class="stat"><b>GH₵{{ '{:,.0f}'.format(price_comparison.lowest) }}</b><span>Lowest starting price</span></div>
+  <div class="stat"><b>GH₵{{ '{:,.0f}'.format(price_comparison.average) }}</b><span>Average starting price</span></div>
+  <div class="stat"><b>GH₵{{ '{:,.0f}'.format(price_comparison.highest) }}</b><span>Highest starting price</span></div>
+</div>
+{% endif %}
+
+<h2>{{ hostels|length }} hostel{{ '' if hostels|length == 1 else 's' }} found</h2>
+{% if hostels %}
+<div class="grid">
+  {% for h in hostels %}{{ hostel_card(h) }}{% endfor %}
+</div>
+{% else %}
+<div class="card">No hostels match your search. Try removing a filter.</div>
+{% endif %}
+
+{% if comparison_stats %}
+<div class="card" style="margin-top:22px">
+  <h3>Price comparison by room type</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Room type</th><th>Average</th><th>Lowest</th><th>Highest</th><th>Rooms available</th></tr>
+    {% for s in comparison_stats %}
+    <tr><td>{{ s['room_type'] }}</td><td>GH₵{{ s['average_price'] }}</td><td>GH₵{{ s['lowest_price'] }}</td><td>GH₵{{ s['highest_price'] }}</td><td>{{ s['available_rooms'] or 0 }}</td></tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endif %}
+
+{% if comparison_rows %}
+<div class="card">
+  <h3>Compare rooms</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Hostel</th><th>Location</th><th>Room</th><th>Price</th><th>Available</th></tr>
+    {% for r in comparison_rows %}
+    <tr>
+      <td><a href="{{ url_for('hostel_detail', hostel_id=r['hostel_id']) }}">{{ r['hostel_name'] }}</a></td>
+      <td>{{ r['city'] }}{% if r['area'] %}, {{ r['area'] }}{% endif %}</td>
+      <td>{{ r['room_type'] }}</td>
+      <td>GH₵{{ '{:,.0f}'.format(r['price']) }} <span class="muted">{{ r['price_period'] }}</span></td>
+      <td>{{ r['available_rooms'] }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endif %}
+
+{% if recent_hostels %}
+<h2 style="margin-top:26px">Recently updated</h2>
+<div class="grid">
+  {% for h in recent_hostels %}{{ hostel_card(h) }}{% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var region = document.getElementById("region");
+    var uni = document.getElementById("university");
+    if (!region || !uni) return;
+    region.addEventListener("change", function () {
+      var current = uni.value;
+      fetch("{{ url_for('api_universities') }}?region=" + encodeURIComponent(region.value))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          uni.innerHTML = "";
+          var all = document.createElement("option");
+          all.value = ""; all.textContent = "All universities";
+          uni.appendChild(all);
+          data.universities.forEach(function (name) {
+            var o = document.createElement("option");
+            o.value = name; o.textContent = name;
+            if (name === current) o.selected = true;
+            uni.appendChild(o);
+          });
+        });
+    });
+  });
+</script>
+{% endblock %}

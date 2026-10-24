@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Booking request sent{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>Request sent</h1>
+  <p>Your booking reference is <strong>{{ booking['booking_reference'] }}</strong>. Keep it safe.</p>
+  <table>
+    <tr><th>Hostel</th><td><a href="{{ url_for('hostel_detail', hostel_id=booking['hostel_id']) }}">{{ booking['hostel_name'] }}</a></td></tr>
+    <tr><th>Room</th><td>{{ booking['room_type'] }} &times; {{ booking['rooms_requested'] }}</td></tr>
+    <tr><th>Move-in</th><td>{{ booking['move_in_date'] }}</td></tr>
+    <tr><th>Amount</th><td>GH₵{{ '{:,.0f}'.format(booking['amount']) }}</td></tr>
+    <tr><th>Status</th><td><span class="badge warn">{{ booking['status']|upper }}</span></td></tr>
+  </table>
+  <p class="muted">The hostel manager will review your request and contact you on {{ booking['student_phone'] }}.</p>
+  <div class="actions"><a class="btn" href="{{ url_for('index') }}">Back to search</a></div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% from "_macros.html" import thumbs, upload_form, status_badge with context %}
+{% block title %}Landlord dashboard{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+  <h1>Welcome, {{ user_display_name(current_user) }}</h1>
+  <a class="btn" href="{{ url_for('new_hostel') }}">+ Add Accommodation</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{{ stats['listings'] }}</b><span>Listings</span></div>
+  <div class="stat"><b>{{ stats['total_rooms'] }}</b><span>Total rooms</span></div>
+  <div class="stat"><b>{{ stats['available_rooms'] }}</b><span>Available</span></div>
+  <div class="stat"><b>{{ stats['occupied_rooms'] }}</b><span>Occupied</span></div>
+  <div class="stat"><b>{{ stats['views'] }}</b><span>Page views</span></div>
+  <div class="stat"><b>{{ stats['calls'] }}</b><span>Call clicks</span></div>
+  <div class="stat"><b>{{ stats['whatsapp'] }}</b><span>WhatsApp clicks</span></div>
+</div>
+
+<h2>Booking requests</h2>
+<div class="card table-wrap">
+  {% if booking_requests %}
+  <table>
+    <tr><th>Reference</th><th>Student</th><th>Contact</th><th>Hostel / room</th><th>Details</th><th>Status</th><th></th></tr>
+    {% for b in booking_requests %}
+    <tr>
+      <td>{{ b['booking_reference'] }}</td>
+      <td>{{ b['display_student_name'] }}</td>
+      <td>{{ b['display_student_phone'] }}<br><span class="muted">{{ b['display_student_email'] }}</span></td>
+      <td>{{ b['hostel_name'] }}<br><span class="muted">{{ b['room_type'] }} &times; {{ b['rooms_requested'] }}</span></td>
+      <td>
+        GH₵{{ '{:,.0f}'.format(b['amount']) }}<br>
+        <span class="muted">Move-in {{ b['move_in_date'] or 'TBC' }}</span>
+        {% if b['message'] %}<br><span class="muted">&ldquo;{{ b['message'] }}&rdquo;</span>{% endif %}
+      </td>
+      <td>{{ status_badge(b['status']) }}</td>
+      <td>
+        {% if b['status'] == 'pending' %}
+        <form class="inline" method="post" action="{{ url_for('update_booking_status', booking_id=b['id'], action='accept') }}"><button class="btn sm" type="submit">Accept</button></form>
+        <form class="inline" method="post" action="{{ url_for('update_booking_status', booking_id=b['id'], action='reject') }}"><button class="btn danger sm" type="submit">Reject</button></form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}No booking requests yet.{% endif %}
+</div>
+
+<h2>My accommodation</h2>
+{% for h in hostels %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <h3><a href="{{ url_for('hostel_detail', hostel_id=h['id']) }}">{{ h['name'] }}</a></h3>
+      <div class="muted">{{ h['city'] }}, {{ h['region'] }} &middot; {{ h['university'] or 'No university set' }}</div>
+      <span class="badge {{ 'ok' if h['approval_status'] == 'approved' else 'warn' }}">{{ h['approval_status']|upper }}</span>
+      {% if is_stale(h['updated_at'] or h['created_at']) %}<span class="badge warn">Update needed</span>{% endif %}
+      <span class="muted">Updated {{ relative_time(h['updated_at'] or h['created_at']) }}</span>
+    </div>
+    <div class="actions" style="margin-top:0">
+      <a class="btn ghost sm" href="{{ url_for('edit_hostel', hostel_id=h['id']) }}">Edit</a>
+      <form class="inline" method="post" action="{{ url_for('delete_hostel', hostel_id=h['id']) }}" onsubmit="return confirm('Delete this listing and all its rooms?')">
+        <button class="btn danger sm" type="submit">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  {{ thumbs(photos_by_hostel.get(h['id'], [])) }}
+  <details style="margin-top:10px"><summary>Upload hostel pictures</summary>
+    {{ upload_form(url_for('upload_hostel_photos', hostel_id=h['id']), 'Drop your pictures here', 'Upload hostel pictures') }}
+  </details>
+
+  <h4 style="margin:14px 0 6px">Rooms</h4>
+  {% for r in rooms if r['hostel_id'] == h['id'] %}
+  <form class="card" style="background:#f8faff;margin-bottom:10px" method="post" action="{{ url_for('update_room', room_id=r['id']) }}">
+    <strong>{{ r['room_type'] }}</strong>{% if r['room_label'] %} &middot; {{ r['room_label'] }}{% endif %}
+    <div class="form-row">
+      <div><label>Price (GH₵)</label><input name="price" value="{{ r['price'] }}"></div>
+      <div><label>Period</label><input name="price_period" value="{{ r['price_period'] }}"></div>
+      <div><label>Total</label><input name="total_rooms" type="number" min="0" value="{{ r['total_rooms'] }}"></div>
+      <div><label>Available</label><input name="available_rooms" type="number" min="0" value="{{ r['available_rooms'] }}"></div>
+      <div><label>Occupied</label><input name="occupied_rooms" type="number" min="0" value="{{ r['occupied_rooms'] }}"></div>
+    </div>
+    <label>Description</label>
+    <input name="room_description" value="{{ r['description'] or '' }}">
+    <div class="actions">
+      <button class="btn sm" type="submit">Save room</button>
+      <button class="btn danger sm" type="submit" formaction="{{ url_for('delete_room', room_id=r['id']) }}" onclick="return confirm('Remove this room type?')">Remove</button>
+    </div>
+    {{ thumbs(photos_by_room.get(r['id'], [])) }}
+  </form>
+  <form method="post" action="{{ url_for('upload_room_photos', room_id=r['id']) }}" enctype="multipart/form-data" style="margin:-4px 0 12px">
+    <input type="file" name="photos" accept=".jpg,.jpeg,.png,.gif,.webp" multiple style="width:auto">
+    <button class="btn ghost sm" type="submit">Upload room photos</button>
+  </form>
+  {% else %}
+  <p class="muted">No rooms yet.</p>
+  {% endfor %}
+
+  <details><summary>Add a room type</summary>
+    <form method="post" action="{{ url_for('add_room', hostel_id=h['id']) }}">
+      <div class="form-row">
+        <div><label>Room type</label>
+          <select name="room_type"><option>Single</option><option>Double</option><option>Shared</option></select></div>
+        <div><label>Price (GH₵)</label><input name="price" required></div>
+        <div><label>Period</label><input name="price_period" value="month"></div>
+        <div><label>Total rooms</label><input name="total_rooms" type="number" min="0" value="1"></div>
+        <div><label>Available</label><input name="available_rooms" type="number" min="0" value="1"></div>
+      </div>
+      <label>Description</label><input name="room_description">
+      <div class="actions"><button class="btn sm" type="submit">Add room</button></div>
+    </form>
+  </details>
+</div>
+{% else %}
+<div class="card">You have not added any accommodation yet. <a href="{{ url_for('new_hostel') }}">Add your first listing</a>.</div>
+{% endfor %}
+
+<h2>My pictures</h2>
+<div class="card">
+  {{ upload_form(url_for('upload_my_photos'), 'Drop your pictures here', 'Upload pictures') }}
+  {{ thumbs(photos) }}
+</div>
+
+<h2>Recent transactions</h2>
+<div class="card table-wrap">
+  {% if transactions %}
+  <table>
+    <tr><th>Date</th><th>Hostel</th><th>Room</th><th>Student</th><th>Amount</th><th>Status</th></tr>
+    {% for t in transactions %}
+    <tr>
+      <td>{{ (t['created_at'] or '')[:10] }}</td><td>{{ t['hostel_name'] }}</td><td>{{ t['room_type'] }}</td>
+      <td>{{ t['student_name'] }}{% if t['institution'] %}<br><span class="muted">{{ t['institution'] }}</span>{% endif %}</td>
+      <td>GH₵{{ '{:,.0f}'.format(t['amount']) }}</td><td>{{ status_badge(t['status']) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}No transactions yet.{% endif %}
+</div>
+{% endblock %}

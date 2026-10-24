@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hostel_card, thumbs, upload_form with context %}
+{% block title %}My bookings{% endblock %}
+{% block content %}
+<h1>My bookings</h1>
+{% if bookings %}
+  {% for b in bookings %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <strong>{{ b['hostel_name'] }}</strong> &middot; {{ b['room_type'] }}
+        <div class="muted">Reference {{ b['booking_reference'] }} &middot; {{ b['rooms_requested'] }} room(s) &middot; GH₵{{ '{:,.0f}'.format(b['amount']) }} &middot; move-in {{ b['move_in_date'] or 'TBC' }}</div>
+      </div>
+      <div>
+        {% if b['status'] == 'approved' %}<span class="badge ok">ACCEPTED</span>
+        {% elif b['status'] == 'rejected' %}<span class="badge bad">DECLINED</span>
+        {% elif b['status'] == 'cancelled' %}<span class="badge bad">CANCELLED</span>
+        {% elif b['status'] == 'paid' %}<span class="badge ok">PAID</span>
+        {% else %}<span class="badge warn">PENDING</span>{% endif %}
+      </div>
+    </div>
+    <p style="margin:8px 0 0">
+      {% if b['status'] == 'approved' %}Good news: your booking has been accepted. The manager will contact you with next steps.
+      {% elif b['status'] == 'rejected' %}The manager could not accept this booking request. You can browse other rooms and try again.
+      {% elif b['status'] == 'pending' %}Your request is waiting for the hostel manager to respond.
+      {% endif %}
+    </p>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card">You have no bookings yet. <a href="{{ url_for('index') }}">Find a hostel</a>.</div>
+{% endif %}
+
+<h2>Saved hostels</h2>
+{% if favorites %}
+  <div class="grid">{% for h in favorites %}{{ hostel_card(h) }}{% endfor %}</div>
+{% else %}
+  <div class="card">No saved hostels yet.</div>
+{% endif %}
+
+<h2 style="margin-top:24px">My pictures</h2>
+<div class="card">
+  {{ upload_form(url_for('upload_my_photos'), 'Drop your pictures here', 'Upload pictures') }}
+  {{ thumbs(photos) }}
+</div>
+{% endblock %}

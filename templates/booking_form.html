@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Book {{ room['room_type'] }} room{% endblock %}
+{% block content %}
+{% set f = form_data or {} %}
+<div class="card form-wide">
+  <h1>Request a booking</h1>
+  <p><strong>{{ hostel['name'] }}</strong> &middot; {{ room['room_type'] }}{% if room['room_label'] %} ({{ room['room_label'] }}){% endif %}
+    &middot; <span class="price">GH₵{{ '{:,.0f}'.format(room['price']) }}</span> <span class="muted">{{ room['price_period'] }}</span></p>
+  <p class="muted">This is a booking request. The hostel manager will review it and contact you. No real payment is taken.</p>
+  <form method="post">
+    <div class="form-row">
+      <div><label for="full_name">Full name</label><input id="full_name" name="full_name" value="{{ f.get('full_name', current_user['full_name'] if current_user and current_user['role'] == 'student' else '') }}" required></div>
+      <div><label for="phone">Phone</label><input id="phone" name="phone" value="{{ f.get('phone', '') }}" inputmode="tel" required></div>
+      <div><label for="email">Email</label><input id="email" name="email" type="email" value="{{ f.get('email', '') }}" required></div>
+    </div>
+    <div class="form-row">
+      <div><label for="rooms_requested">Rooms requested</label><input id="rooms_requested" name="rooms_requested" type="number" min="1" max="{{ [room['available_rooms'], 1]|max }}" value="{{ f.get('rooms_requested', 1) }}"></div>
+      <div><label for="move_in_date">Move-in date</label><input id="move_in_date" name="move_in_date" type="date" value="{{ f.get('move_in_date', '') }}" required></div>
+      <div>
+        <label for="payment_period">Payment period</label>
+        <select id="payment_period" name="payment_period">
+          {% for p in ['semester', 'academic year', 'month'] %}<option value="{{ p }}" {{ 'selected' if f.get('payment_period') == p }}>{{ p|capitalize }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <label for="message">Message to the manager (optional)</label>
+    <textarea id="message" name="message">{{ f.get('message', '') }}</textarea>
+    <div class="actions">
+      <button class="btn" type="submit">Send request</button>
+      <a class="btn ghost" href="{{ url_for('hostel_detail', hostel_id=hostel['id']) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
