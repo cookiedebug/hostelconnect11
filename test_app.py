@@ -202,6 +202,22 @@ class AccommodationFilterTests(unittest.TestCase):
         db.close()
         self.assertIsNone(booking)
 
+    def test_booking_rejects_noncanonical_move_in_date(self):
+        response = self.post(
+            "/book/1",
+            data={
+                "full_name": "Ada Doe",
+                "phone": "0240000000",
+                "email": "invalid-date@example.com",
+                "move_in_date": "20261115",
+                "payment_period": "semester",
+                "rooms_requested": "1",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"choose a future move-in date", response.data)
+
     def test_registration_rejects_short_password(self):
         response = self.post(
             "/register",

@@ -3,7 +3,7 @@ import os
 import secrets
 import sqlite3
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from urllib.parse import urlparse
@@ -1088,7 +1088,9 @@ def book(room_id):
         payment_period = required_form_value(request.form, "payment_period")
         message = required_form_value(request.form, "message")
         try:
-            parsed_move_in_date = datetime.strptime(move_in_date, "%Y-%m-%d").date()
+            parsed_move_in_date = date.fromisoformat(move_in_date)
+            if parsed_move_in_date.isoformat() != move_in_date:
+                parsed_move_in_date = None
         except ValueError:
             parsed_move_in_date = None
         if (
