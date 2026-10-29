@@ -72,6 +72,10 @@ python app.py
 
 The SQLite database is created automatically at `instance/accommodation.db`.
 
+### Run or debug from VS Code without internet
+
+Install the VS Code Python extension and the project dependencies before going offline. Open this folder in VS Code, select **Run HostelConnect (Offline)** in **Run and Debug**, then press **F5**. VS Code starts `app.py` with the project virtual environment, opens the local site at `http://127.0.0.1:8080/`, and keeps the debugger attached. Stop the app with **Shift+F5**. The server only listens on your computer; no internet connection is required.
+
 ### Running offline on Windows
 
 Once Python and the dependencies are installed, the app runs without an internet connection. Double-click `run_windows.bat`; it starts the server, waits until it responds, and opens `http://127.0.0.1:8080/` in your browser. Keep the launcher window open while using the app. The site uses a local cover image when a listing's photo is hosted externally, so browsing does not depend on internet images.

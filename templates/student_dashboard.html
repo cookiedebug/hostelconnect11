@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Student dashboard{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">YOUR ACCOUNT</p><h1>Welcome, {{ current_user.full_name }}</h1><p class="muted">Track your room requests and saved hostels in one place.</p></div><a class="button" href="{{ url_for('index') }}">Browse hostels</a></section>
+<section class="section-block"><div class="section-heading"><div><h2>My booking requests</h2><p class="muted">Booking requests are confirmed by the hostel manager.</p></div></div>
+{% if bookings %}
+<div class="table-wrap"><table><thead><tr><th>Reference</th><th>Hostel</th><th>Room</th><th>Move-in</th><th>Status</th><th>Amount</th></tr></thead><tbody>
+{% for booking in bookings %}<tr><td>{{ booking.booking_reference }}</td><td>{{ booking.hostel_name }}</td><td>{{ booking.room_type }}</td><td>{{ booking.move_in_date or '—' }}</td><td><span class="status {{ booking.status }}">{{ 'ACCEPTED' if booking.status == 'approved' else ('DECLINED' if booking.status == 'rejected' else booking.status|upper) }}</span><small class="status-note">{% if booking.status == 'pending' %}Your request is waiting for the hostel manager.{% elif booking.status == 'approved' %}Your booking has been accepted.{% elif booking.status == 'rejected' %}Your booking request was declined.{% endif %}</small></td><td>GH₵{{ "%.2f"|format(booking.amount) }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<div class="empty-state"><h3>No booking requests yet</h3><p>When you request a room, its status will appear here.</p><a class="button secondary" href="{{ url_for('index') }}">Find a hostel</a></div>{% endif %}
+</section>
+<section class="section-block"><div class="section-heading"><div><h2>Saved hostels</h2></div></div>
+{% if favorites %}<div class="card-grid">{% for hostel in favorites %}<article class="hostel-card compact-card"><a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}"><img src="{{ media_url(hostel.image_url) }}" alt="Photo of {{ hostel.name }}"></a><div class="card-body"><h3><a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}">{{ hostel.name }}</a></h3><p class="muted">{{ hostel.city }} · {{ hostel.university }}</p></div></article>{% endfor %}</div>{% else %}<p class="muted">You have not saved any hostels yet.</p>{% endif %}
+</section>
+{% endblock %}

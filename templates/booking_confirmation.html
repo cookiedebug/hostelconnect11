@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Booking request received{% endblock %}
+{% block content %}
+<section class="confirmation-card">
+  <div class="success-icon">✓</div><p class="eyebrow">REQUEST SENT</p><h1>Your booking request is in.</h1>
+  <p class="lead">The hostel manager will review your request. No payment has been taken.</p>
+  <dl class="details-list confirmation-details"><dt>Reference</dt><dd><strong>{{ booking.booking_reference }}</strong></dd><dt>Hostel</dt><dd>{{ booking.hostel_name }}</dd><dt>Room</dt><dd>{{ booking.room_type }}</dd><dt>Rooms requested</dt><dd>{{ booking.rooms_requested }}</dd><dt>Move-in date</dt><dd>{{ booking.move_in_date }}</dd><dt>Request status</dt><dd><span class="status {{ booking.status }}">{{ booking.status|upper }}</span></dd></dl>
+  <a class="button" href="{{ url_for('index') }}">Continue browsing</a>
+</section>
+{% endblock %}

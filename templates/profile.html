@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+<section class="narrow-page"><p class="eyebrow">ACCOUNT SETTINGS</p><h1>Your profile</h1><form class="form-card" method="post" action="{{ url_for('manager_profile') }}">
+  <label class="field">Full name<input name="full_name" value="{{ user.full_name }}" required></label>
+  <label class="field">Email address<input type="email" value="{{ user.email }}" disabled></label>
+  <label class="field">Phone number<input name="phone" type="tel" value="{{ user.phone or '' }}"></label>
+  <label class="field">University / institution<input name="institution" value="{{ user.institution or '' }}"></label>
+  <label class="field">Gender<select name="gender"><option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option><option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option></select></label>
+  <button class="button" type="submit">Save profile</button>
+</form></section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<section class="auth-layout"><div class="auth-aside"><p class="eyebrow">WELCOME BACK</p><h1>Your next stay is one sign-in away.</h1><p>Manage your bookings, saved hostels, or accommodation listings.</p></div>
+<form class="form-card auth-card" method="post" action="{{ url_for('login') }}">
+  <h2>Sign in to HostelConnect</h2><p class="muted">Use your account email and password.</p>
+  <label class="field">Email address<input type="email" name="email" autocomplete="email" required></label>
+  <label class="field">Password<input type="password" name="password" autocomplete="current-password" required></label>
+  <button class="button full" type="submit">Sign in</button>
+  <p class="form-note">New landlord? <a href="{{ url_for('register') }}">Create a landlord account</a></p>
+</form></section>
+{% endblock %}

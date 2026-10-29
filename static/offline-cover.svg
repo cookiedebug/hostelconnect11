@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">HostelConnect accommodation</title>
+  <desc id="desc">A welcoming student home illustration</desc>
+  <rect width="1200" height="700" fill="#e9f2ed"/>
+  <circle cx="930" cy="140" r="72" fill="#f4cc77"/>
+  <path d="M0 535 360 260l245 188 190-150 405 299v103H0z" fill="#c7ddd1"/>
+  <path d="m278 394 239-198 239 198v205H278z" fill="#fffdf8"/>
+  <path d="m239 407 278-230 278 230-33 39-245-202-245 202z" fill="#16715b"/>
+  <rect x="475" y="452" width="92" height="147" rx="4" fill="#dcebe2"/>
+  <rect x="334" y="438" width="88" height="81" rx="4" fill="#a8ccba"/>
+  <rect x="659" y="438" width="66" height="81" rx="4" fill="#a8ccba"/>
+  <text x="600" y="650" text-anchor="middle" fill="#245044" font-family="Arial,sans-serif" font-size="28" letter-spacing="4">A PLACE TO BELONG</text>
+</svg>

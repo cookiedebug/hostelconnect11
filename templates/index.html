@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Find student accommodation{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
+    <h1>Find a place that feels like <em>home.</em></h1>
+    <p class="lead">Explore student hostels across Ghana, compare room prices, and find a stay close to campus.</p>
+  </div>
+  <form class="search-panel" method="get" action="{{ url_for('index') }}">
+    <label class="field wide">Search by hostel, city or campus<input name="q" value="{{ q }}" placeholder="e.g. Legon, Accra"></label>
+    <label class="field">Region<select name="region"><option value="">All regions</option>{% for region in regions %}<option value="{{ region }}" {% if selected_region == region %}selected{% endif %}>{{ region }}</option>{% endfor %}</select></label>
+    <label class="field">University<select name="university"><option value="">All universities</option>{% for university in universities %}<option value="{{ university }}" {% if selected_university == university %}selected{% endif %}>{{ university }}</option>{% endfor %}</select></label>
+    <label class="field">Room type<select name="room_type"><option value="">Any type</option>{% for type in ['Single', 'Shared', 'Double', 'Self-contained'] %}<option value="{{ type }}" {% if room_type == type %}selected{% endif %}>{{ type }}</option>{% endfor %}</select></label>
+    <label class="field">Min. price (GH₵)<input type="number" name="min_price" min="0" step="any" value="{{ min_price }}" placeholder="Any"></label>
+    <label class="field">Max. price (GH₵)<input type="number" name="max_price" min="0" step="any" value="{{ max_price }}" placeholder="Any"></label>
+    <label class="check-field"><input type="checkbox" name="available_only" value="1" {% if available_only == '1' %}checked{% endif %}> Available rooms only</label>
+    <button class="button" type="submit">Search hostels</button>
+  </form>
+</section>
+
+{% if price_comparison %}
+<section class="comparison-summary">
+  <p class="eyebrow">PRICE SNAPSHOT · {{ price_comparison.area }}</p>
+  <div class="stat-grid">
+    <div><strong>GH₵{{ "%.2f"|format(price_comparison.lowest) }}</strong><span>Lowest listed</span></div>
+    <div><strong>GH₵{{ "%.2f"|format(price_comparison.average) }}</strong><span>Average price</span></div>
+    <div><strong>GH₵{{ "%.2f"|format(price_comparison.highest) }}</strong><span>Highest listed</span></div>
+    <div><strong>{{ price_comparison.count }}</strong><span>Hostels found</span></div>
+  </div>
+</section>
+{% endif %}
+
+{% if comparison_stats %}
+<section class="section-block">
+  <div class="section-heading"><div><p class="eyebrow">MAKE AN INFORMED CHOICE</p><h2>Room price comparison</h2></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Room type</th><th>Average</th><th>From</th><th>To</th><th>Available</th></tr></thead><tbody>
+  {% for row in comparison_stats %}<tr><td>{{ row.room_type }}</td><td>GH₵{{ "%.2f"|format(row.average_price or 0) }}</td><td>GH₵{{ "%.2f"|format(row.lowest_price or 0) }}</td><td>GH₵{{ "%.2f"|format(row.highest_price or 0) }}</td><td>{{ row.available_rooms or 0 }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+
+<section class="section-block">
+  <div class="section-heading"><div><p class="eyebrow">A PLACE FOR EVERY STUDENT</p><h2>{% if q or selected_region or selected_university %}Search results{% else %}Featured hostels{% endif %}</h2><p class="muted">{{ hostels|length }} place{{ '' if hostels|length == 1 else 's' }} to explore</p></div></div>
+  {% if hostels %}
+  <div class="card-grid">
+    {% for hostel in hostels %}
+    <article class="hostel-card">
+      <a class="cover-link" href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}"><img src="{{ media_url(hostel.image_url) }}" alt="Photo of {{ hostel.name }}" loading="lazy"></a>
+      <div class="card-body">
+        <div class="card-topline"><span class="pill">{{ hostel.region or hostel.city or 'Ghana' }}</span><span class="availability">{{ availability_status(hostel.available_rooms) }}</span></div>
+        <h3><a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}">{{ hostel.name }}</a></h3>
+        <p class="muted">{{ hostel.university or hostel.city or 'Student accommodation' }}</p>
+        <p class="card-description">{{ hostel.description or hostel.address or 'Comfortable accommodation for students.' }}</p>
+        <div class="card-bottom"><strong>{% if hostel.min_price is not none %}GH₵{{ "%.2f"|format(hostel.min_price) }} <small>/ {{ hostel.price_period or 'month' }}</small>{% else %}Contact for price{% endif %}</strong><a class="text-link" href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}">View details →</a></div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h3>No hostels match those filters yet</h3><p>Try a different search, or clear some filters to see more places.</p><a class="button secondary" href="{{ url_for('index') }}">Clear search</a></div>
+  {% endif %}
+</section>
+
+{% if recent_hostels and not (q or selected_region or selected_university or room_type or min_price or max_price or available_only == '1') %}
+<section class="section-block recent-block"><div class="section-heading"><div><p class="eyebrow">RECENTLY UPDATED</p><h2>Fresh listings</h2></div></div>
+  <div class="compact-list">{% for hostel in recent_hostels %}<a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}"><span><strong>{{ hostel.name }}</strong><small>{{ hostel.city }} · {{ hostel.university or hostel.region }}</small></span><span class="text-link">{% if hostel.min_price is not none %}From GH₵{{ "%.2f"|format(hostel.min_price) }}{% else %}View listing{% endif %} →</span></a>{% endfor %}</div>
+</section>
+{% endif %}
+<script>
+const OFFLINE_COVER_URL = {{ url_for('static', filename='offline-cover.svg')|tojson }};
+document.addEventListener("error", function (event) {
+  const image = event.target;
+  if (image instanceof HTMLImageElement && image.src !== OFFLINE_COVER_URL) {
+    image.src = OFFLINE_COVER_URL;
+  }
+}, true);
+</script>
+{% endblock %}

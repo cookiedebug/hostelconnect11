@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Manage rooms{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">LANDLORD WORKSPACE</p><h1>Room inventory</h1><p class="muted">View room types, prices, and availability across your listings.</p></div><a class="button secondary" href="{{ url_for('manager_dashboard') }}">Back to dashboard</a></section>
+{% if rooms %}<div class="table-wrap"><table><thead><tr><th>Hostel</th><th>Room type</th><th>Price</th><th>Total</th><th>Available</th><th>Occupied</th></tr></thead><tbody>{% for room in rooms %}<tr><td>{{ room.hostel_name }}</td><td>{{ room.room_type }}</td><td>GH₵{{ "%.2f"|format(room.price) }} / {{ room.price_period }}</td><td>{{ room.total_rooms }}</td><td>{{ room.available_rooms }}</td><td>{{ room.occupied_rooms }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><h3>No rooms listed yet</h3><p>Add rooms from your landlord dashboard.</p></div>{% endif %}
+{% endblock %}

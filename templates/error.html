@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<section class="confirmation-card"><p class="eyebrow">ERROR {{ code }}</p><h1>{{ message }}</h1><p class="lead">The page may have moved, or you may not have permission to view it.</p><a class="button" href="{{ url_for('index') }}">Return home</a></section>
+{% endblock %}

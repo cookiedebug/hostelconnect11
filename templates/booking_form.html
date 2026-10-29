@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Request a room{% endblock %}
+{% block content %}
+<p class="breadcrumbs"><a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}">← Back to {{ hostel.name }}</a></p>
+<section class="booking-layout"><div><p class="eyebrow">ROOM REQUEST</p><h1>Request your stay</h1><p class="lead">{{ room.room_type }} room at <strong>{{ hostel.name }}</strong></p><div class="price-callout"><strong>GH₵{{ "%.2f"|format(room.price) }}</strong><span>per {{ room.price_period }}</span><small>{{ room.available_rooms }} room(s) currently available</small></div><p class="muted">This request is not a payment. The hostel manager will review and respond to your booking.</p></div>
+<form class="form-card" method="post" action="{{ url_for('book', room_id=room.id) }}">
+  <h2>Your details</h2>
+  <label class="field">Full name<input name="full_name" value="{{ form_data.get('full_name', '') if form_data else (current_user.full_name if current_user else '') }}" autocomplete="name" required></label>
+  <label class="field">Phone number<input type="tel" name="phone" value="{{ form_data.get('phone', '') if form_data else (current_user.phone if current_user else '') }}" autocomplete="tel" required></label>
+  <label class="field">Email address<input type="email" name="email" value="{{ form_data.get('email', '') if form_data else (current_user.email if current_user else '') }}" autocomplete="email" required></label>
+  <label class="field">Move-in date<input type="date" name="move_in_date" value="{{ form_data.get('move_in_date', '') if form_data else '' }}" required></label>
+  <label class="field">Payment period<select name="payment_period" required>{% for period in ['month', 'semester', 'year'] %}<option value="{{ period }}" {% if form_data and form_data.get('payment_period') == period %}selected{% endif %}>{{ period|capitalize }}</option>{% endfor %}</select></label>
+  <label class="field">Number of rooms<input type="number" name="rooms_requested" value="{{ form_data.get('rooms_requested', '1') if form_data else '1' }}" min="1" max="{{ room.available_rooms }}" required></label>
+  <label class="field">Message to the hostel <span class="muted">(optional)</span><textarea name="message" rows="3">{{ form_data.get('message', '') if form_data else '' }}</textarea></label>
+  <button class="button full" type="submit">Send booking request</button>
+</form></section>
+{% endblock %}
