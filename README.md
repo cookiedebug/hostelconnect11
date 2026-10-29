@@ -80,6 +80,10 @@ Install the VS Code Python extension and the project dependencies before going o
 
 Once Python and the dependencies are installed, the app runs without an internet connection. Double-click `run_windows.bat`; it starts the server, waits until it responds, and opens `http://127.0.0.1:8080/` in your browser. Keep the launcher window open while using the app. The site uses a local cover image when a listing's photo is hosted externally, so browsing does not depend on internet images.
 
+### Run tests
+
+Run `python -m unittest discover -v` from the project folder. Tests use a temporary SQLite database and mock the SMS provider, so they do not alter your local database or send real messages. State-changing forms require a session CSRF token; logout uses POST rather than GET.
+
 ## Automatic publishing and public browsing
 
 Visitors can use the homepage filters and open published hostel details without registering. The public navigation includes Home, Browse Hostels, Universities, Login, and Sign Up; Sign Up is for landlords. Existing student login and booking/favorite features remain available for existing accounts.
@@ -92,7 +96,7 @@ New landlord accounts are active immediately and go directly to their management
 - Manager: `manager@hostelconnect.local` / `manager123`
 - Student: `student@hostelconnect.local` / `student123`
 
-Change all demo passwords and the Flask secret key before any real deployment.
+Change all demo passwords before deployment, and set `HOSTELCONNECT_SECRET_KEY` to a long, random value in the server environment. If it is unset, the app generates an ephemeral key at startup, which signs local sessions but invalidates them whenever the app restarts.
 
 ## Important production upgrades
 
@@ -100,7 +104,6 @@ This is intentionally a prototype. Before turning it into the Ghana-wide product
 
 - Real payment gateway integration (e.g. a Ghana-supported provider)
 - HTTPS and secure secret management
-- CSRF protection
 - Strong password and account verification flows
 - Email/SMS/WhatsApp notifications
 - Image upload storage (cloud object storage)

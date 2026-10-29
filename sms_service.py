@@ -9,14 +9,14 @@ def send_sms(phone_number, message):
     client_secret = os.getenv("HUBTEL_CLIENT_SECRET")
     sender_id = os.getenv("HUBTEL_SENDER_ID")
 
+    if not phone_number or not message:
+        raise ValueError("A phone number and message are required.")
+
     if not client_id or not client_secret:
         raise RuntimeError("Hubtel credentials are not configured.")
 
     if not sender_id:
         raise RuntimeError("Hubtel sender ID is not configured.")
-
-    if not phone_number or not message:
-        raise ValueError("A phone number and message are required.")
 
     url = os.getenv(
         "HUBTEL_SMS_URL",
@@ -37,9 +37,6 @@ def send_sms(phone_number, message):
     )
 
     if not response.ok:
-        print("Hubtel status:", response.status_code)
-        print("Hubtel error details:", response.text)
         response.raise_for_status()
 
     return response.json()
-

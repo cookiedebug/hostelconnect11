@@ -1,9 +1,12 @@
 import math
+import os
+import secrets
 import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import (
     Flask,
@@ -26,7 +29,7 @@ MAX_PHOTO_BYTES = 5 * 1024 * 1024
 DEFAULT_COVER = "offline-cover.svg"
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-secret-key-in-production"
+app.config["SECRET_KEY"] = os.environ.get("HOSTELCONNECT_SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 APP_NAME = "HostelConnect"
 APP_SLOGAN = "Premium Student Accommodation"
@@ -235,11 +238,43 @@ def migrate_db(db):
     for booking in db.execute("SELECT * FROM bookings WHERE booking_reference IS NULL OR booking_reference='' ORDER BY id").fetchall():
         hostel = db.execute("SELECT h.name FROM hostels h JOIN rooms r ON r.hostel_id=h.id WHERE r.id=?", (booking["room_id"],)).fetchone()
         hostel_name = (hostel["name"] if hostel else "HOSTEL")
-        prefix = "".join(ch for ch in hostel_name.upper() if ch.isalpha())[:2] or "PH"
-        prefix = (prefix + "H")[:2]
-        year = datetime.now(timezone.utc).strftime("%Y")
-        ref = f"{prefix}-{year}-{int(booking['id']):04d}"
-        db.execute("UPDATE bookings SET booking_reference=?, student_name=COALESCE(student_name, 'Guest Student'), student_phone=COALESCE(student_phone, ''), student_email=COALESCE(student_email, ''), rooms_requested=COALESCE(rooms_requested, 1), payment_period=COALESCE(payment_period, 'semester'), updated_at=COALESCE(updated_at, created_at) WHERE id=?", (ref, booking["id"]))
+        ref = generate_booking_reference(db, hostel_name)
+        db.execute(
+            """UPDATE bookings SET booking_reference=?,
+               student_name=COALESCE(student_name, 'Guest Student'),
+               student_phone=COALESCE(student_phone, ''),
+               student_email=COALESCE(student_email, ''),
+               rooms_requested=COALESCE(rooms_requested, 1),
+               payment_period=COALESCE(payment_period, 'semester'),
+               updated_at=COALESCE(updated_at, created_at)
+               WHERE id=?""",
+            (ref, booking["id"]),
+        )
+    for booking in db.execute(
+        "SELECT id, room_id, booking_reference, payment_reference FROM bookings"
+    ).fetchall():
+        parts = (booking["booking_reference"] or "").split("-")
+        is_predictable_reference = (
+            len(parts) == 3
+            and len(parts[0]) == 2
+            and parts[0].isalpha()
+            and len(parts[1]) == 4
+            and parts[1].isdigit()
+            and parts[2].isdigit()
+        )
+        if not is_predictable_reference:
+            continue
+        hostel = db.execute(
+            "SELECT h.name FROM hostels h JOIN rooms r ON r.hostel_id=h.id WHERE r.id=?",
+            (booking["room_id"],),
+        ).fetchone()
+        ref = generate_booking_reference(db, hostel["name"] if hostel else "HOSTEL")
+        db.execute(
+            """UPDATE bookings SET booking_reference=?,
+               payment_reference=CASE WHEN payment_reference=? THEN ? ELSE payment_reference END
+               WHERE id=?""",
+            (ref, booking["booking_reference"], ref, booking["id"]),
+        )
     if not had_occupied_rooms:
         db.execute("UPDATE rooms SET occupied_rooms=MAX(total_rooms-available_rooms, 0)")
     for old, new in REGION_ALIASES.items():
@@ -268,8 +303,13 @@ def generate_booking_reference(db, hostel_name):
     prefix = "".join(ch for ch in (hostel_name or "HOSTEL").upper() if ch.isalpha())[:2] or "PH"
     prefix = (prefix + "H")[:2]
     year = datetime.now(timezone.utc).strftime("%Y")
-    seq = db.execute("SELECT COUNT(*) + 1 FROM bookings WHERE booking_reference LIKE ?", (f"{prefix}-{year}-%",)).fetchone()[0]
-    return f"{prefix}-{year}-{seq:04d}"
+    while True:
+        reference = f"{prefix}-{year}-R{secrets.token_hex(16)}"
+        if not db.execute(
+            "SELECT 1 FROM bookings WHERE booking_reference=?",
+            (reference,),
+        ).fetchone():
+            return reference
 
 
 def init_db():
@@ -555,7 +595,7 @@ def safe_int(value, default=0, minimum=0):
         return default
     if not math.isfinite(parsed):
         return default
-    return max(parsed, minimum)
+    return max(parsed, minimum) if minimum is not None else parsed
 
 
 def safe_float(value, default=0.0, minimum=0.0):
@@ -571,7 +611,7 @@ def safe_float(value, default=0.0, minimum=0.0):
         return default
     if not math.isfinite(parsed):
         return default
-    return max(parsed, minimum)
+    return max(parsed, minimum) if minimum is not None else parsed
 
 
 def normalize_room_inventory(total, available, occupied=None):
@@ -594,6 +634,15 @@ def required_form_value(form, key, default=""):
     if isinstance(value, str):
         return value.strip()
     return value
+
+
+def safe_referrer(default_endpoint):
+    referrer = request.referrer
+    if referrer:
+        parsed = urlparse(referrer)
+        if parsed.scheme in {"http", "https"} and parsed.netloc == request.host:
+            return referrer
+    return url_for(default_endpoint)
 
 
 def media_url(path):
@@ -664,7 +713,27 @@ def inject_globals():
         "is_stale": is_stale,
         "whatsapp_url": whatsapp_url,
         "availability_status": availability_status,
+        "csrf_token": csrf_token,
     }
+
+
+def csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+@app.before_request
+def protect_state_changing_requests():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        csrf_token()
+        return
+    expected = session.get("_csrf_token")
+    submitted = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token")
+    if not expected or not submitted or not secrets.compare_digest(expected, submitted):
+        abort(400)
 
 
 def current_user():
@@ -897,6 +966,9 @@ def register():
         if not name or not email or not password:
             flash("Please complete all required sign-up fields.", "danger")
             return render_template("register.html")
+        if len(password) < 8:
+            flash("Your password must be at least 8 characters long.", "danger")
+            return render_template("register.html"), 400
         role = "manager"
         institution = required_form_value(request.form, "institution")
         phone = required_form_value(request.form, "phone")
@@ -940,7 +1012,7 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
     flash("You have been signed out.", "success")
@@ -993,7 +1065,7 @@ def favorite(hostel_id):
         db.execute("INSERT OR IGNORE INTO favorites(student_id,hostel_id) VALUES(?,?)",
                    (session["user_id"],hostel_id))
     db.commit(); db.close()
-    return redirect(request.referrer or url_for("index"))
+    return redirect(safe_referrer("index"))
 
 
 @app.route("/book/<int:room_id>", methods=["GET", "POST"])
@@ -1011,14 +1083,41 @@ def book(room_id):
         full_name = required_form_value(request.form, "full_name")
         phone = required_form_value(request.form, "phone")
         email = required_form_value(request.form, "email")
-        rooms_requested = safe_int(request.form.get("rooms_requested", 1), default=1, minimum=1)
+        rooms_requested = safe_int(request.form.get("rooms_requested", 1), default=None, minimum=None)
         move_in_date = required_form_value(request.form, "move_in_date")
         payment_period = required_form_value(request.form, "payment_period")
         message = required_form_value(request.form, "message")
-        if not full_name or not phone or not email or not move_in_date or not payment_period:
+        try:
+            parsed_move_in_date = datetime.strptime(move_in_date, "%Y-%m-%d").date()
+        except ValueError:
+            parsed_move_in_date = None
+        if (
+            not full_name
+            or not phone
+            or not email
+            or parsed_move_in_date is None
+            or parsed_move_in_date < datetime.now(timezone.utc).date()
+            or payment_period not in {"month", "semester", "year"}
+            or rooms_requested is None
+            or rooms_requested < 1
+        ):
             db.close()
-            flash("Please complete all required booking fields.", "danger")
-            return render_template("booking_form.html", room=room, hostel={"id": room["hostel_id"], "name": room["hostel_name"]}, form_data=request.form)
+            flash("Enter valid booking details and choose a future move-in date.", "danger")
+            return render_template(
+                "booking_form.html",
+                room=room,
+                hostel={"id": room["hostel_id"], "name": room["hostel_name"]},
+                form_data=request.form,
+            ), 400
+        if rooms_requested > room["available_rooms"]:
+            db.close()
+            flash("The requested number of rooms is no longer available.", "danger")
+            return render_template(
+                "booking_form.html",
+                room=room,
+                hostel={"id": room["hostel_id"], "name": room["hostel_name"]},
+                form_data=request.form,
+            ), 400
         user = current_user()
         student_id = user["id"] if user and user["role"] == "student" else ensure_guest_student(db)
         ref = generate_booking_reference(db, room["hostel_name"])
@@ -1116,7 +1215,13 @@ def manager_dashboard():
                                  COALESCE(SUM(h.view_count),0) views,
                                  COALESCE(SUM(h.call_clicks),0) calls,
                                  COALESCE(SUM(h.whatsapp_clicks),0) whatsapp
-                          FROM hostels h LEFT JOIN rooms r ON r.hostel_id=h.id
+                          FROM hostels h
+                          LEFT JOIN (
+                              SELECT hostel_id, SUM(total_rooms) total_rooms,
+                                     SUM(available_rooms) available_rooms,
+                                     SUM(occupied_rooms) occupied_rooms
+                              FROM rooms GROUP BY hostel_id
+                          ) r ON r.hostel_id=h.id
                           WHERE h.manager_id=?""", (session["user_id"],)).fetchone()
     transactions = db.execute("""SELECT b.*, u.full_name student_name, u.institution,
                                         r.room_type, h.name hostel_name
@@ -1246,6 +1351,15 @@ def delete_hostel(hostel_id):
     hostel = db.execute("SELECT id FROM hostels WHERE id=? AND manager_id=?", (hostel_id, session["user_id"])).fetchone()
     if not hostel:
         db.close(); abort(403)
+    booking = db.execute(
+        """SELECT 1 FROM bookings b JOIN rooms r ON r.id=b.room_id
+           WHERE r.hostel_id=? LIMIT 1""",
+        (hostel_id,),
+    ).fetchone()
+    if booking:
+        db.close()
+        flash("This listing has booking history and cannot be permanently removed.", "warning")
+        return redirect(url_for("manager_dashboard"))
     photos = db.execute("SELECT path FROM photos WHERE hostel_id=?", (hostel_id,)).fetchall()
     for photo in photos:
         delete_photo_file(photo["path"])
@@ -1289,9 +1403,26 @@ def new_hostel():
         city = required_form_value(request.form, "city")
         if not name:
             flash("Please provide the hostel name.", "danger")
-            return render_template("hostel_form.html", hostel=None)
+            return render_template("hostel_form.html", hostel=None, form_data=request.form), 400
         if not city:
             city = ""
+        room_type = required_form_value(request.form, "room_type") or "Single"
+        total_rooms = safe_int(request.form.get("total_rooms"), default=None, minimum=None)
+        available_rooms = safe_int(request.form.get("available_rooms"), default=None, minimum=None)
+        room_price = safe_float(request.form.get("price"), default=None, minimum=None)
+        room_period = required_form_value(request.form, "price_period", "month")
+        if (
+            total_rooms is None
+            or available_rooms is None
+            or room_price is None
+            or total_rooms < 0
+            or available_rooms < 0
+            or available_rooms > total_rooms
+            or room_price < 0
+            or room_period not in {"month", "semester", "year"}
+        ):
+            flash("Enter a valid non-negative room price and inventory.", "danger")
+            return render_template("hostel_form.html", hostel=None, form_data=request.form), 400
         db = get_db()
         cur = db.execute("""INSERT INTO hostels
             (manager_id,name,description,region,city,area,address,university,facilities,rules,contact_phone,contact_email,image_url,verified,created_at,updated_at,approval_status)
@@ -1302,14 +1433,7 @@ def new_hostel():
              request.form.get("contact_email", ""), None, 1, now(), now(), "approved"))
         hid = cur.lastrowid
         store_photos(db, session["user_id"], request.files.getlist("photos"), hostel_id=hid)
-        total_rooms = safe_int(request.form.get("total_rooms"), default=0, minimum=0)
-        available_rooms = min(max(safe_int(request.form.get("available_rooms"), default=0, minimum=0), 0), total_rooms)
-        room_price = safe_float(request.form.get("price"), default=0.0, minimum=0.0)
-        room_period = request.form.get("price_period", "month")
         total_rooms, available_rooms, occupied_rooms = normalize_room_inventory(total_rooms, available_rooms)
-        room_type = required_form_value(request.form, "room_type")
-        if not room_type:
-            room_type = "Single"
         room_cur = db.execute("""INSERT INTO rooms(hostel_id,room_type,price,price_period,description,total_rooms,available_rooms,occupied_rooms,updated_at)
                        VALUES(?,?,?,?,?,?,?,?,?)""",
                       (hid, room_type, room_price, room_period,
@@ -1343,7 +1467,8 @@ def edit_hostel(hostel_id):
         city = required_form_value(request.form, "city")
         if not name:
             flash("Please provide the hostel name.", "danger")
-            db.close(); return render_template("hostel_form.html", hostel=hostel)
+            db.close()
+            return render_template("hostel_form.html", hostel=hostel, form_data=request.form), 400
         if not city:
             city = hostel["city"] if hostel else ""
         db.execute("""UPDATE hostels SET name=?,description=?,region=?,city=?,area=?,address=?,university=?,facilities=?,rules=?,contact_phone=?,contact_email=?,updated_at=?
@@ -1366,15 +1491,32 @@ def add_room(hostel_id):
     db = get_db()
     owned = db.execute("SELECT 1 FROM hostels WHERE id=? AND manager_id=?",
                        (hostel_id,session["user_id"])).fetchone()
-    if not owned: abort(403)
-    total = safe_int(request.form.get("total_rooms"), default=0, minimum=0)
-    available = safe_int(request.form.get("available_rooms"), default=0, minimum=0)
+    if not owned:
+        db.close()
+        abort(403)
+    room_type = required_form_value(request.form, "room_type")
+    total = safe_int(request.form.get("total_rooms"), default=None, minimum=None)
+    available = safe_int(request.form.get("available_rooms"), default=None, minimum=None)
+    room_price = safe_float(request.form.get("price"), default=None, minimum=None)
+    room_period = required_form_value(request.form, "price_period", "month")
+    if (
+        not room_type
+        or total is None
+        or available is None
+        or room_price is None
+        or total < 0
+        or available < 0
+        or available > total
+        or room_price < 0
+        or room_period not in {"month", "semester", "year"}
+    ):
+        db.close()
+        flash("Enter a valid room type, price, and inventory.", "danger")
+        return redirect(url_for("manager_dashboard"))
     total, available, occupied = normalize_room_inventory(total, available)
-    room_price = safe_float(request.form.get("price"), default=0.0, minimum=0.0)
-    room_period = request.form.get("price_period", "month")
     room_cur = db.execute("""INSERT INTO rooms(hostel_id,room_type,price,price_period,description,total_rooms,available_rooms,occupied_rooms,updated_at)
                   VALUES(?,?,?,?,?,?,?,?,?)""",
-               (hostel_id,request.form["room_type"],room_price,room_period,
+               (hostel_id,room_type,room_price,room_period,
                 request.form.get("room_description", ""),total,available,occupied,now()))
     record_price(db, room_cur.lastrowid, room_price, room_period)
     db.commit(); db.close()
@@ -1390,14 +1532,35 @@ def update_room(room_id):
                          WHERE r.id=? AND h.manager_id=?""", (room_id, session["user_id"])).fetchone()
     if not room:
         db.close(); abort(403)
-    total = safe_int(request.form.get("total_rooms"), default=0, minimum=0)
-    available = safe_int(request.form.get("available_rooms"), default=0, minimum=0)
-    occupied = safe_int(request.form.get("occupied_rooms", total - available), default=0, minimum=0)
+    total = safe_int(request.form.get("total_rooms"), default=None, minimum=None)
+    available = safe_int(request.form.get("available_rooms"), default=None, minimum=None)
+    occupied_value = request.form.get("occupied_rooms")
+    if occupied_value is not None:
+        occupied = safe_int(occupied_value, default=None, minimum=None)
+    elif total is not None and available is not None:
+        occupied = total - available
+    else:
+        occupied = None
+    price = safe_float(request.form.get("price"), default=None, minimum=None)
+    period = required_form_value(request.form, "price_period", room["price_period"])
+    if (
+        total is None
+        or available is None
+        or occupied is None
+        or price is None
+        or total < 0
+        or available < 0
+        or occupied < 0
+        or available + occupied > total
+        or price < 0
+        or period not in {"month", "semester", "year"}
+    ):
+        db.close()
+        flash("Enter a valid non-negative room price and inventory.", "danger")
+        return redirect(url_for("manager_dashboard"))
     total, available, occupied = normalize_room_inventory(total, available, occupied)
-    price = safe_float(request.form.get("price"), default=room["price"], minimum=0.0)
-    period = request.form.get("price_period", room["price_period"])
     db.execute("""UPDATE rooms SET price=?, price_period=?, description=?, total_rooms=?, available_rooms=?, occupied_rooms=?, updated_at=?
-                  WHERE id=?""", (price, request.form.get("price_period", room["price_period"]),
+                  WHERE id=?""", (price, period,
                   request.form.get("room_description", room["description"] or ""), total, available, occupied, now(), room_id))
     if price != room["price"] or period != room["price_period"]:
         record_price(db, room_id, price, period)
@@ -1415,6 +1578,14 @@ def delete_room(room_id):
                          WHERE r.id=? AND h.manager_id=?""", (room_id, session["user_id"])).fetchone()
     if not room:
         db.close(); abort(403)
+    booking = db.execute(
+        "SELECT 1 FROM bookings WHERE room_id=? LIMIT 1",
+        (room_id,),
+    ).fetchone()
+    if booking:
+        db.close()
+        flash("This room type has booking history and cannot be permanently removed.", "warning")
+        return redirect(url_for("manager_dashboard"))
     photos = db.execute("SELECT path FROM photos WHERE room_id=?", (room_id,)).fetchall()
     for photo in photos:
         delete_photo_file(photo["path"])
@@ -1453,7 +1624,7 @@ def upload_my_photos():
         flash(f"{len(saved)} photo(s) uploaded.", "success")
     else:
         flash("Choose one or more pictures to upload.", "warning")
-    return redirect(request.referrer or url_for("dashboard"))
+    return redirect(safe_referrer("dashboard"))
 
 
 @app.route("/manager/hostel/<int:hostel_id>/photos", methods=["POST"])
@@ -1497,14 +1668,14 @@ def delete_photo(photo_id):
     db.execute("DELETE FROM photos WHERE id=?", (photo_id,))
     db.commit(); db.close()
     flash("Photo removed.", "success")
-    return redirect(request.referrer or url_for("dashboard"))
+    return redirect(safe_referrer("dashboard"))
 
 
 @app.errorhandler(413)
 def too_large(error):
     app.logger.warning("Rejected oversized request: %s", error)
     flash("Those files are too large. Please upload smaller pictures.", "danger")
-    return redirect(request.referrer or url_for("dashboard"))
+    return redirect(safe_referrer("dashboard"))
 
 
 @app.route("/admin")
@@ -1610,6 +1781,22 @@ def restore_hostel(hostel_id):
 @role_required("admin")
 def remove_hostel(hostel_id):
     db = get_db()
+    hostel = db.execute("SELECT id FROM hostels WHERE id=?", (hostel_id,)).fetchone()
+    if not hostel:
+        db.close()
+        abort(404)
+    booking = db.execute(
+        """SELECT 1 FROM bookings b JOIN rooms r ON r.id=b.room_id
+           WHERE r.hostel_id=? LIMIT 1""",
+        (hostel_id,),
+    ).fetchone()
+    if booking:
+        db.close()
+        flash("This listing has booking history and cannot be permanently removed.", "warning")
+        return redirect(url_for("admin_dashboard"))
+    photos = db.execute("SELECT path FROM photos WHERE hostel_id=?", (hostel_id,)).fetchall()
+    for photo in photos:
+        delete_photo_file(photo["path"])
     db.execute("DELETE FROM hostels WHERE id=?", (hostel_id,))
     db.commit(); db.close()
     flash("Listing removed.", "success")
@@ -1656,5 +1843,3 @@ def not_found(error):
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=8080, debug=False)
-else:
-    init_db()

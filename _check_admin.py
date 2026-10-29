@@ -1,28 +1,42 @@
-import urllib.request
-import urllib.error
-import http.cookiejar
+import tempfile
+from pathlib import Path
 
-cj = http.cookiejar.CookieJar()
-opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-req = urllib.request.Request(
-    "http://127.0.0.1:5000/login",
-    data=b"email=admin%40hostelconnect.local&password=admin123",
-    method="POST",
-)
-req.add_header("Content-Type", "application/x-www-form-urlencoded")
-try:
-    opener.open(req)
-except urllib.error.HTTPError:
-    pass
-html = opener.open("http://127.0.0.1:5000/admin").read().decode("utf-8", "replace")
-checks = [
-    "My pictures",
-    "Hostel pictures",
-    "Upload hostel pictures",
-    "Drop your pictures",
-    "+ Add Accommodation",
-]
-for item in checks:
-    print(item, "OK" if item in html else "MISSING")
-form = opener.open("http://127.0.0.1:5000/manager/hostel/new").read().decode("utf-8", "replace")
-print("ADMIN_FORM", "ADMINISTRATOR" in form and "multipart/form-data" in form)
+import app as app_module
+
+
+def main():
+    original_db_path = app_module.DB_PATH
+    with tempfile.TemporaryDirectory() as directory:
+        app_module.DB_PATH = Path(directory) / "accommodation.db"
+        try:
+            app_module.init_db()
+            client = app_module.app.test_client()
+            csrf_token = "admin-smoke-check-token"
+            with client.session_transaction() as session:
+                session["_csrf_token"] = csrf_token
+            login = client.post(
+                "/login",
+                data={
+                    "_csrf_token": csrf_token,
+                    "email": "admin@hostelconnect.local",
+                    "password": "admin123",
+                },
+            )
+            if login.status_code != 302:
+                raise RuntimeError(f"Admin login failed with HTTP {login.status_code}.")
+
+            dashboard = client.get("/admin")
+            if dashboard.status_code != 200 or b"Platform overview" not in dashboard.data:
+                raise RuntimeError("The administrator dashboard did not load.")
+
+            hostel_form = client.get("/manager/hostel/new")
+            if hostel_form.status_code != 200 or b"Add a hostel" not in hostel_form.data:
+                raise RuntimeError("The administrator hostel form did not load.")
+
+            print("Admin login, dashboard, and hostel form are working.")
+        finally:
+            app_module.DB_PATH = original_db_path
+
+
+if __name__ == "__main__":
+    main()

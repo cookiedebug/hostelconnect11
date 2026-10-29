@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#123b32">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}{{ app_name }}{% endblock %} · {{ app_name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   {% block head %}{% endblock %}
@@ -17,7 +18,7 @@
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
         {% if current_user.role == 'manager' %}<a href="{{ url_for('manager_rooms') }}">Rooms</a>{% endif %}
         {% if current_user.role in ('manager', 'admin') %}<a href="{{ url_for('analytics') }}">Analytics</a>{% endif %}
-        <a href="{{ url_for('logout') }}">Sign out</a>
+        <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="nav-link" type="submit">Sign out</button></form>
       {% else %}
         <a href="{{ url_for('login') }}">Sign in</a>
         <a class="nav-cta" href="{{ url_for('register') }}">List your hostel</a>

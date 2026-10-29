@@ -2,7 +2,7 @@
 {% block title %}Create a landlord account{% endblock %}
 {% block content %}
 <section class="auth-layout"><div class="auth-aside"><p class="eyebrow">FOR HOSTEL OWNERS & AGENTS</p><h1>Bring your accommodation to students.</h1><p>Create a landlord account to publish listings, manage rooms, and respond to booking requests.</p></div>
-<form class="form-card auth-card" method="post" action="{{ url_for('register') }}">
+<form class="form-card auth-card" method="post" action="{{ url_for('register') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   <h2>Create your account</h2><p class="muted">All fields are required unless marked optional.</p>
   <label class="field">Full name<input name="full_name" autocomplete="name" required></label>
   <label class="field">Email address<input type="email" name="email" autocomplete="email" required></label>

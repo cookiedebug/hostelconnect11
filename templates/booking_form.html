@@ -3,7 +3,7 @@
 {% block content %}
 <p class="breadcrumbs"><a href="{{ url_for('hostel_detail', hostel_id=hostel.id) }}">← Back to {{ hostel.name }}</a></p>
 <section class="booking-layout"><div><p class="eyebrow">ROOM REQUEST</p><h1>Request your stay</h1><p class="lead">{{ room.room_type }} room at <strong>{{ hostel.name }}</strong></p><div class="price-callout"><strong>GH₵{{ "%.2f"|format(room.price) }}</strong><span>per {{ room.price_period }}</span><small>{{ room.available_rooms }} room(s) currently available</small></div><p class="muted">This request is not a payment. The hostel manager will review and respond to your booking.</p></div>
-<form class="form-card" method="post" action="{{ url_for('book', room_id=room.id) }}">
+<form class="form-card" method="post" action="{{ url_for('book', room_id=room.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   <h2>Your details</h2>
   <label class="field">Full name<input name="full_name" value="{{ form_data.get('full_name', '') if form_data else (current_user.full_name if current_user else '') }}" autocomplete="name" required></label>
   <label class="field">Phone number<input type="tel" name="phone" value="{{ form_data.get('phone', '') if form_data else (current_user.phone if current_user else '') }}" autocomplete="tel" required></label>

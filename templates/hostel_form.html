@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edit listing' if hostel else 'Add a hostel' }}{% endblock %}
 {% block content %}
+{% set form_data = form_data or {} %}
 <section class="narrow-page"><p class="eyebrow">LISTING DETAILS</p><h1>{{ 'Edit accommodation' if hostel else 'Add a hostel' }}</h1><p class="muted">Share accurate details so students can make an informed choice.</p>
-<form class="form-card form-grid" method="post" enctype="multipart/form-data" action="{{ url_for('edit_hostel', hostel_id=hostel.id) if hostel else url_for('new_hostel') }}">
-  <label class="field">Hostel name<input name="name" value="{{ hostel.name if hostel else '' }}" required></label>
-  <label class="field">University<select name="university"><option value="">Select a university</option>{% for university in universities %}<option value="{{ university }}" {% if hostel and hostel.university == university %}selected{% endif %}>{{ university }}</option>{% endfor %}</select></label>
-  <label class="field">Region<select name="region"><option value="">Select a region</option>{% for region in regions %}<option value="{{ region }}" {% if hostel and hostel.region == region %}selected{% endif %}>{{ region }}</option>{% endfor %}</select></label>
-  <label class="field">City<input name="city" value="{{ hostel.city if hostel else '' }}"></label>
-  <label class="field">Area / neighbourhood<input name="area" value="{{ hostel.area if hostel else '' }}"></label>
-  <label class="field">Address<input name="address" value="{{ hostel.address if hostel else '' }}"></label>
-  <label class="field full-row">Description<textarea name="description" rows="4">{{ hostel.description if hostel else '' }}</textarea></label>
-  <label class="field">Facilities<input name="facilities" value="{{ hostel.facilities if hostel else '' }}" placeholder="Wi-Fi, security, kitchen"></label>
-  <label class="field">House rules<textarea name="rules" rows="3">{{ hostel.rules if hostel else '' }}</textarea></label>
-  <label class="field">Contact phone<input type="tel" name="contact_phone" value="{{ hostel.contact_phone if hostel else '' }}"></label>
-  <label class="field">Contact email<input type="email" name="contact_email" value="{{ hostel.contact_email if hostel else '' }}"></label>
+<form class="form-card form-grid" method="post" enctype="multipart/form-data" action="{{ url_for('edit_hostel', hostel_id=hostel.id) if hostel else url_for('new_hostel') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <label class="field">Hostel name<input name="name" value="{{ form_data.get('name', hostel.name if hostel else '') }}" required></label>
+  <label class="field">University<select name="university"><option value="">Select a university</option>{% for university in universities %}<option value="{{ university }}" {% if form_data.get('university', hostel.university if hostel else '') == university %}selected{% endif %}>{{ university }}</option>{% endfor %}</select></label>
+  <label class="field">Region<select name="region"><option value="">Select a region</option>{% for region in regions %}<option value="{{ region }}" {% if form_data.get('region', hostel.region if hostel else '') == region %}selected{% endif %}>{{ region }}</option>{% endfor %}</select></label>
+  <label class="field">City<input name="city" value="{{ form_data.get('city', hostel.city if hostel else '') }}"></label>
+  <label class="field">Area / neighbourhood<input name="area" value="{{ form_data.get('area', hostel.area if hostel else '') }}"></label>
+  <label class="field">Address<input name="address" value="{{ form_data.get('address', hostel.address if hostel else '') }}"></label>
+  <label class="field full-row">Description<textarea name="description" rows="4">{{ form_data.get('description', hostel.description if hostel else '') }}</textarea></label>
+  <label class="field">Facilities<input name="facilities" value="{{ form_data.get('facilities', hostel.facilities if hostel else '') }}" placeholder="Wi-Fi, security, kitchen"></label>
+  <label class="field">House rules<textarea name="rules" rows="3">{{ form_data.get('rules', hostel.rules if hostel else '') }}</textarea></label>
+  <label class="field">Contact phone<input type="tel" name="contact_phone" value="{{ form_data.get('contact_phone', hostel.contact_phone if hostel else '') }}"></label>
+  <label class="field">Contact email<input type="email" name="contact_email" value="{{ form_data.get('contact_email', hostel.contact_email if hostel else '') }}"></label>
   {% if not hostel %}
   <div class="subform full-row"><h2>First room type</h2><div class="form-grid">
-    <label class="field">Room type<select name="room_type"><option>Single</option><option>Shared</option><option>Double</option><option>Self-contained</option></select></label>
-    <label class="field">Price (GH₵)<input type="number" name="price" min="0" step="0.01" required></label>
-    <label class="field">Price period<select name="price_period"><option value="month">Per month</option><option value="semester">Per semester</option><option value="year">Per year</option></select></label>
-    <label class="field">Total rooms<input type="number" name="total_rooms" min="0" value="1" required></label>
-    <label class="field">Available rooms<input type="number" name="available_rooms" min="0" value="1" required></label>
-    <label class="field">Room description<input name="room_description"></label>
+    <label class="field">Room type<select name="room_type">{% for room_type in ['Single', 'Shared', 'Double', 'Self-contained'] %}<option value="{{ room_type }}" {% if form_data.get('room_type', 'Single') == room_type %}selected{% endif %}>{{ room_type }}</option>{% endfor %}</select></label>
+    <label class="field">Price (GH₵)<input type="number" name="price" min="0" step="0.01" value="{{ form_data.get('price', '') }}" required></label>
+    <label class="field">Price period<select name="price_period">{% for period in ['month', 'semester', 'year'] %}<option value="{{ period }}" {% if form_data.get('price_period', 'month') == period %}selected{% endif %}>Per {{ period }}</option>{% endfor %}</select></label>
+    <label class="field">Total rooms<input type="number" name="total_rooms" min="0" value="{{ form_data.get('total_rooms', '1') }}" required></label>
+    <label class="field">Available rooms<input type="number" name="available_rooms" min="0" value="{{ form_data.get('available_rooms', '1') }}" required></label>
+    <label class="field">Room description<input name="room_description" value="{{ form_data.get('room_description', '') }}"></label>
   </div></div>
   {% endif %}
   <label class="field full-row">Photos (JPG, PNG, WEBP or GIF; up to 5MB each)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>

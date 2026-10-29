@@ -1,6 +1,8 @@
 import os
 import unittest
+from unittest.mock import Mock, patch
 
+import requests
 from sms_service import send_sms
 
 
@@ -21,29 +23,85 @@ def run_sms_probe(phone_number=None):
 
 
 class SmsIntegrationTest(unittest.TestCase):
-    def test_sms_integration_is_optional(self):
-        if not os.getenv("HUBTEL_CLIENT_ID") or not os.getenv("HUBTEL_CLIENT_SECRET"):
-            self.skipTest("Hubtel credentials are not configured; skipping SMS integration test.")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_missing_credentials_raise_without_sending(self):
+        with patch("sms_service.requests.post") as post:
+            with self.assertRaisesRegex(RuntimeError, "credentials are not configured"):
+                send_sms("+233123456789", "Test message")
 
-        if not os.getenv("HUBTEL_SENDER_ID"):
-            self.skipTest("Hubtel sender ID is not configured; skipping SMS integration test.")
+        post.assert_not_called()
 
-        if not os.getenv("TEST_PHONE_NUMBER"):
-            phone_number = input(
-                "Enter your phone number with country code (e.g. +233XXXXXXXXX): "
-            )
-        else:
-            phone_number = os.getenv("TEST_PHONE_NUMBER")
+    @patch.dict(
+        os.environ,
+        {
+            "HUBTEL_CLIENT_ID": "test-client",
+            "HUBTEL_CLIENT_SECRET": "test-secret",
+        },
+        clear=True,
+    )
+    def test_missing_sender_id_raises_without_sending(self):
+        with patch("sms_service.requests.post") as post:
+            with self.assertRaisesRegex(RuntimeError, "sender ID is not configured"):
+                send_sms("+233123456789", "Test message")
 
-        try:
-            result = send_sms(
-                phone_number,
-                "HostelConnect test: Your Hubtel SMS integration is working!",
-            )
-        except Exception as error:
-            self.fail(f"SMS test failed: {error}")
+        post.assert_not_called()
 
-        self.assertIsInstance(result, dict)
+    @patch.dict(
+        os.environ,
+        {
+            "HUBTEL_CLIENT_ID": "test-client",
+            "HUBTEL_CLIENT_SECRET": "test-secret",
+            "HUBTEL_SENDER_ID": "TEST",
+            "HUBTEL_SMS_URL": "https://sms.example.invalid/send",
+        },
+        clear=True,
+    )
+    @patch("sms_service.requests.post")
+    def test_send_sms_posts_configured_payload(self, post):
+        response = Mock()
+        response.ok = True
+        response.json.return_value = {"status": "accepted"}
+        post.return_value = response
+
+        result = send_sms("+233123456789", "Test message")
+
+        self.assertEqual(result, {"status": "accepted"})
+        post.assert_called_once()
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], "https://sms.example.invalid/send")
+        self.assertEqual(kwargs["json"], {
+            "from": "TEST",
+            "to": "+233123456789",
+            "content": "Test message",
+        })
+        self.assertEqual(kwargs["timeout"], 20)
+        self.assertEqual(kwargs["auth"].username, "test-client")
+        self.assertEqual(kwargs["auth"].password, "test-secret")
+
+    @patch.dict(
+        os.environ,
+        {
+            "HUBTEL_CLIENT_ID": "test-client",
+            "HUBTEL_CLIENT_SECRET": "test-secret",
+            "HUBTEL_SENDER_ID": "TEST",
+        },
+        clear=True,
+    )
+    @patch("sms_service.requests.post")
+    def test_http_errors_are_raised(self, post):
+        response = Mock()
+        response.ok = False
+        response.status_code = 503
+        response.raise_for_status.side_effect = requests.HTTPError("Service unavailable")
+        post.return_value = response
+
+        with self.assertRaisesRegex(requests.HTTPError, "Service unavailable"):
+            send_sms("+233123456789", "Test message")
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_empty_phone_or_message_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "phone number and message are required"):
+            send_sms("", "Test message")
 
 
 if __name__ == "__main__":

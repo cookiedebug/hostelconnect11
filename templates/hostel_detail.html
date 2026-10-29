@@ -5,8 +5,8 @@
 <section class="detail-hero">
   <div class="detail-cover"><img src="{{ media_url(hostel.image_url or (photos[0].path if photos else None)) }}" alt="Photo of {{ hostel.name }}"></div>
   <div class="detail-heading"><p class="eyebrow">{{ hostel.region or 'GHANA' }}{% if hostel.city %} · {{ hostel.city }}{% endif %}</p><h1>{{ hostel.name }}</h1><p class="lead">{{ hostel.description or 'Student accommodation close to campus.' }}</p><p class="muted">{{ hostel.university or hostel.address or hostel.area or '' }}</p>
-  {% if hostel.contact_phone %}<a class="button" href="tel:{{ hostel.contact_phone }}" onclick="fetch('{{ url_for('track_hostel_event', hostel_id=hostel.id, event='call') }}',{method:'POST'})">Call hostel</a>{% endif %}
-  {% if hostel.contact_phone %}<a class="button secondary" href="{{ whatsapp_url(hostel.contact_phone) }}" onclick="fetch('{{ url_for('track_hostel_event', hostel_id=hostel.id, event='whatsapp') }}',{method:'POST'})">WhatsApp</a>{% endif %}
+  {% if hostel.contact_phone %}<a class="button" href="tel:{{ hostel.contact_phone }}" onclick="fetch('{{ url_for('track_hostel_event', hostel_id=hostel.id, event='call') }}',{method:'POST',headers:{'X-CSRF-Token':'{{ csrf_token() }}'}})">Call hostel</a>{% endif %}
+  {% if hostel.contact_phone %}<a class="button secondary" href="{{ whatsapp_url(hostel.contact_phone) }}" onclick="fetch('{{ url_for('track_hostel_event', hostel_id=hostel.id, event='whatsapp') }}',{method:'POST',headers:{'X-CSRF-Token':'{{ csrf_token() }}'}})">WhatsApp</a>{% endif %}
   </div>
 </section>
 {% if photos %}
@@ -26,8 +26,8 @@
     {% if hostel.manager_name %}<dt>Listed by</dt><dd>{{ hostel.manager_name }}</dd>{% endif %}
   </dl>
   {% if hostel.contact_email %}<a class="text-link" href="mailto:{{ hostel.contact_email }}">Email the hostel</a>{% endif %}
-  <hr><form method="post" action="{{ url_for('report', hostel_id=hostel.id) }}"><label class="field">Report outdated information<textarea name="reason" rows="3" placeholder="Tell us what needs checking"></textarea></label><button class="button secondary" type="submit">Send report</button></form>
-  {% if current_user and current_user.role == 'student' %}<form method="post" action="{{ url_for('favorite', hostel_id=hostel.id) }}"><button class="button secondary full" type="submit">Save to favorites</button></form>{% endif %}
+  <hr><form method="post" action="{{ url_for('report', hostel_id=hostel.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><label class="field">Report outdated information<textarea name="reason" rows="3" placeholder="Tell us what needs checking"></textarea></label><button class="button secondary" type="submit">Send report</button></form>
+  {% if current_user and current_user.role == 'student' %}<form method="post" action="{{ url_for('favorite', hostel_id=hostel.id) }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}"><button class="button secondary full" type="submit">Save to favorites</button></form>{% endif %}
   </aside>
 </div>
 {% endblock %}

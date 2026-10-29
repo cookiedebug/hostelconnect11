@@ -21,7 +21,7 @@ if not exist "%VENV_PYTHON%" (
     )
 )
 
-%PYTHON_COMMAND% -c "import flask, werkzeug" >nul 2>&1
+%PYTHON_COMMAND% -c "import flask, werkzeug, requests" >nul 2>&1
 if errorlevel 1 (
     echo Flask dependencies are missing. Internet is only needed to install them:
     echo   %PYTHON_COMMAND% -m pip install -r requirements.txt

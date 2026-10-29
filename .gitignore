@@ -65,6 +65,11 @@ db.sqlite3-journal
 # Flask stuff:
 instance/
 .webassets-cache
+static/uploads/
+
+# Local environment files
+.env.*
+!.env.example
 
 # Scrapy stuff:
 .scrapy
