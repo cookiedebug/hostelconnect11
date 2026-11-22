@@ -7,6 +7,7 @@
   <label class="field">Email address<input type="email" name="email" autocomplete="email" required></label>
   <label class="field">Password<input type="password" name="password" autocomplete="current-password" required></label>
   <button class="button full" type="submit">Sign in</button>
-  <p class="form-note">New landlord? <a href="{{ url_for('register') }}">Create a landlord account</a></p>
+  <p class="form-note">New student? <a href="{{ url_for('student_signup') }}">Create a student account</a></p>
+  <p class="form-note">Listing a hostel? <a href="{{ url_for('register') }}">Create a landlord account</a></p>
 </form></section>
 {% endblock %}

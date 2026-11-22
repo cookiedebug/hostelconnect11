@@ -5,7 +5,8 @@ A school-project-ready Flask + SQLite prototype for a Ghana-wide student accommo
 ## What is included
 
 ### Student
-- Browse and search without an account
+- Search public hostel listings by region and university
+- Create a student account to view hostel details, rooms, prices, facilities and locations
 - Search hostels by region and university
 - See currently available rooms near the selected campus
 - View prices, rooms, facilities and locations
@@ -86,7 +87,7 @@ Run `python -m unittest discover -v` from the project folder. Tests use a tempor
 
 ## Automatic publishing and public browsing
 
-Visitors can use the homepage filters and open published hostel details without registering. The public navigation includes Home, Browse Hostels, Universities, Login, and Sign Up; Sign Up is for landlords. Existing student login and booking/favorite features remain available for existing accounts.
+Visitors can search public hostel listings from the homepage. Viewing hostel details requires a student account; the public navigation includes a dedicated Student sign up link alongside landlord registration. Existing student login and booking/favorite features remain available.
 
 New landlord accounts are active immediately and go directly to their management dashboard. New listings are published immediately after submission. Administrators can suspend landlords, hide or remove listings, and manage reports. The migration adds hostel contact/rules fields, room descriptions/payment/occupied fields, `gender` to users, and `room_id` to photos; existing records are preserved.
 

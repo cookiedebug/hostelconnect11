@@ -992,6 +992,53 @@ def register():
     return render_template("register.html")
 
 
+@app.route("/student/signup", methods=["GET", "POST"])
+def student_signup():
+    if request.method == "POST":
+        name = required_form_value(request.form, "full_name")
+        email = required_form_value(request.form, "email").lower()
+        password = required_form_value(request.form, "password")
+        phone = required_form_value(request.form, "phone")
+        institution = required_form_value(request.form, "institution")
+        gender = required_form_value(request.form, "gender")
+        if not all((name, email, password, phone, institution, gender)):
+            flash("Please complete all required student sign-up fields.", "danger")
+            return render_template("student_signup.html"), 400
+        if gender not in ("male", "female"):
+            flash("Choose a valid gender.", "danger")
+            return render_template("student_signup.html"), 400
+        if len(password) < 8:
+            flash("Your password must be at least 8 characters long.", "danger")
+            return render_template("student_signup.html"), 400
+        db = get_db()
+        try:
+            cur = db.execute(
+                """INSERT INTO users
+                   (full_name,email,password_hash,role,institution,phone,gender,created_at,approval_status)
+                   VALUES(?,?,?,?,?,?,?,?,?)""",
+                (
+                    name,
+                    email,
+                    generate_password_hash(password),
+                    "student",
+                    institution,
+                    phone,
+                    gender,
+                    now(),
+                    "approved",
+                ),
+            )
+            db.commit()
+            session["user_id"] = cur.lastrowid
+            flash("Student account created. You can now explore hostel details.", "success")
+            return redirect(url_for("index"))
+        except sqlite3.IntegrityError:
+            flash("That email is already registered.", "danger")
+        finally:
+            db.close()
+    return render_template("student_signup.html")
+
+
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
@@ -1021,6 +1068,9 @@ def logout():
 
 @app.route("/hostel/<int:hostel_id>")
 def hostel_detail(hostel_id):
+    if not current_user():
+        flash("Create a student account or sign in to view hostel details.", "warning")
+        return redirect(url_for("student_signup"))
     db = get_db()
     hostel = db.execute("""SELECT h.*, u.full_name manager_name
                            FROM hostels h JOIN users u ON u.id=h.manager_id

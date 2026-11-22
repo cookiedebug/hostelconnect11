@@ -238,6 +238,64 @@ class AccommodationFilterTests(unittest.TestCase):
         db.close()
         self.assertIsNone(user)
 
+    def test_student_signup_creates_student_account(self):
+        response = self.post(
+            "/student/signup",
+            data={
+                "full_name": "New Student",
+                "email": "new-student@example.com",
+                "password": "student-password",
+                "phone": "0240000000",
+                "institution": "University of Ghana",
+                "gender": "female",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/")
+        db = get_db()
+        user = db.execute(
+            "SELECT id, role, institution, phone, gender FROM users WHERE email=?",
+            ("new-student@example.com",),
+        ).fetchone()
+        db.close()
+        self.assertIsNotNone(user)
+        self.assertEqual(user["role"], "student")
+        self.assertEqual(user["institution"], "University of Ghana")
+        self.assertEqual(user["phone"], "0240000000")
+        self.assertEqual(user["gender"], "female")
+
+    def test_homepage_shows_student_signup_link(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Student sign up', response.data)
+        self.assertIn(b'href="/student/signup"', response.data)
+
+    def test_anonymous_hostel_details_redirect_to_student_signup(self):
+        db = get_db()
+        hostel = db.execute("SELECT id FROM hostels ORDER BY id LIMIT 1").fetchone()
+        db.close()
+
+        response = self.client.get(f"/hostel/{hostel['id']}")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/student/signup")
+
+    def test_student_can_view_hostel_details_after_signing_in(self):
+        db = get_db()
+        student = db.execute(
+            "SELECT id FROM users WHERE email='student@hostelconnect.local'"
+        ).fetchone()
+        hostel = db.execute("SELECT id FROM hostels ORDER BY id LIMIT 1").fetchone()
+        db.close()
+        with self.client.session_transaction() as session:
+            session["user_id"] = student["id"]
+
+        response = self.client.get(f"/hostel/{hostel['id']}")
+
+        self.assertEqual(response.status_code, 200)
+
     def test_booking_rejects_room_count_above_available_inventory(self):
         db = get_db()
         room = db.execute(

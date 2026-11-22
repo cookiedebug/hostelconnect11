@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Student sign up{% endblock %}
+{% block content %}
+<section class="auth-layout"><div class="auth-aside"><p class="eyebrow">FOR STUDENTS</p><h1>Find a hostel that fits your campus life.</h1><p>Create a student account to view hostel rooms, prices, facilities, and contact details.</p></div>
+<form class="form-card auth-card" method="post" action="{{ url_for('student_signup') }}"><input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+  <h2>Create a student account</h2><p class="muted">Tell us a little about yourself and your institution.</p>
+  <label class="field">Full name<input name="full_name" autocomplete="name" required></label>
+  <label class="field">Email address<input type="email" name="email" autocomplete="email" required></label>
+  <label class="field">Phone number<input type="tel" name="phone" autocomplete="tel" required></label>
+  <label class="field">University / institution<input name="institution" autocomplete="organization" required></label>
+  <label class="field">Gender<select name="gender" required><option value="" selected disabled>Choose an option</option><option value="male">Male</option><option value="female">Female</option></select></label>
+  <label class="field">Password<input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+  <button class="button full" type="submit">Sign up as a student</button>
+  <p class="form-note">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
+</form></section>
+{% endblock %}
